@@ -2,7 +2,6 @@
 export const prerender = false;
 import Layout from '../layouts/Layout.astro';
 import { getAuthUrl } from '../lib/hubspot/api';
-import { getAccessToken } from '../lib/hubspot/auth';
 
 const authUrl = getAuthUrl();
 const accessTokenCookie = Astro.cookies.get('hubspot_access_token');

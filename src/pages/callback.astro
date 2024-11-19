@@ -27,7 +27,7 @@ if (Astro.request.method === 'GET') {
                 sameSite: 'strict',
                 maxAge: 60 * 60 * 2 // 2 hours
             });
-            return Astro.redirect('/pages');
+            return Astro.redirect('/');
         } catch (error) {
             message = `Authentication failed: ${error.message}`;
         }

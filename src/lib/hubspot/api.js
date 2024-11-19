@@ -1,6 +1,6 @@
 const CLIENT_ID = import.meta.env.HUBSPOT_CLIENT_ID;
 const CLIENT_SECRET = import.meta.env.HUBSPOT_CLIENT_SECRET;
-const REDIRECT_URI = 'http://localhost:4321/callback';
+const REDIRECT_URI = import.meta.env.REDIRECT_URI;
 const SCOPES = 'content';
 
 const AUTH_URL = 'https://app.hubspot.com/oauth/authorize';
