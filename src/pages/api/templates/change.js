@@ -1,6 +1,6 @@
 import { getAccessTokenFromRequest } from '../../../lib/hubspot/auth';
 import { handleApiError } from '../../../lib/hubspot/api';
-import { updatePageTemplate } from '../../../lib/hubspot/templates';
+import { updatePageTemplate } from '../../../lib/hubspot/api';
 
 export const prerender = false;
 export const POST = async ({ request }) => {
