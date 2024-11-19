@@ -33,7 +33,7 @@ if (Astro.request.method === 'GET') {
 }
 ---
 
-<Layout title="HubSpot OAuth Callback" portalId={portalId}>
+<Layout title="HubSpot OAuth Callback" checkForPassword={false}>
 	<main class="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white ">
 		<h1 class="text-4xl font-bold  text-orange-500">HubSpot OAuth Callback</h1>
 		<p class="text-lg mt-4">{message}</p>

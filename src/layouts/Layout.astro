@@ -2,12 +2,13 @@
 interface Props {
 	title: string;
 	portalId?: string;
+	checkForPassword?: boolean;
 }
 
 import Navigation from '../components/Navigation.astro';
 import PasswordProtect from '../components/PasswordProtect.astro';
 import { checkPassword } from '../middleware/password';
-const { title, portalId } = Astro.props;
+const { title, portalId, checkForPassword = true } = Astro.props;
 const isLoggedIn = checkPassword(Astro.request);
 ---
 
@@ -22,7 +23,7 @@ const isLoggedIn = checkPassword(Astro.request);
 		<title>{title}</title>
 	</head>
 	<body>
-		{isLoggedIn ? (
+		{isLoggedIn ||!checkForPassword ? (
 			<>
 				<Navigation portalId={portalId} />
 				<slot />
