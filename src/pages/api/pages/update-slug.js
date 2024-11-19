@@ -14,10 +14,11 @@ export const POST = async ({ request, cookies }) => {
         }
 
         const body = await request.json();
+        console.log(body);
 
         // Validate the required fields
-        if (!body.oldSlug || !body.newSlug) {
-            return new Response(JSON.stringify({ error: 'Missing required fields: oldSlug or newSlug' }), {
+        if (!body.newSlug) {
+            return new Response(JSON.stringify({ error: 'Missing required fields: newSlug' }), {
                 status: 400,
                 headers: {
                     'Content-Type': 'application/json'

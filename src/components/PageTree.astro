@@ -598,7 +598,7 @@ const showArchived = Astro.url.searchParams.has('archived');
 
                     alert(message);
                     modal.close();
-                    location.reload();
+                    successful > 0 && location.reload();
                 } catch (error) {
                     console.error('Error updating slugs:', error);
                     alert('Invalid regex pattern or error updating slugs. Please try again.');
@@ -711,7 +711,7 @@ const showArchived = Astro.url.searchParams.has('archived');
 
                 alert(message);
                 modal.close();
-                location.reload();
+                successful > 0 && location.reload();
             } catch (error) {
                 console.error('Error updating slugs:', error);
                 alert('Invalid regex pattern or error updating slugs. Please try again.');
