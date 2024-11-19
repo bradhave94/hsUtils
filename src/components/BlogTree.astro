@@ -670,7 +670,7 @@ groupedPosts['No Blog'] = noBlogPosts;
 
                     alert(message);
                     modal.close();
-                    location.reload();
+                    if (successful > 0) location.reload();
                 } catch (error) {
                     console.error('Error updating slugs:', error);
                     alert('Invalid regex pattern or error updating slugs. Please try again.');
