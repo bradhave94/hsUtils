@@ -1,17 +1,11 @@
 import { defineConfig } from 'astro/config';
 import tailwind from '@astrojs/tailwind';
-import vercel from '@astrojs/vercel/serverless';
+
+import netlify from '@astrojs/netlify';
 
 export default defineConfig({
-  output: 'hybrid',
+  output: 'server',
   integrations: [tailwind()],
-
-  // Define which routes should be prerendered
-  // Pages not listed here will be server-rendered by default
-  prefetch: {
-    prefetchAll: false,
-    defaultStrategy: 'hover'
-  },
 
   routes: [
     {
@@ -41,5 +35,5 @@ export default defineConfig({
     }
   ],
 
-  adapter: vercel(),
+  adapter: netlify()
 });
