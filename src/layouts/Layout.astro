@@ -5,7 +5,10 @@ interface Props {
 }
 
 import Navigation from '../components/Navigation.astro';
+import PasswordProtect from '../components/PasswordProtect.astro';
+import { checkPassword } from '../middleware/password';
 const { title, portalId } = Astro.props;
+const isLoggedIn = checkPassword(Astro.request);
 ---
 
 <!doctype html>
@@ -19,8 +22,14 @@ const { title, portalId } = Astro.props;
 		<title>{title}</title>
 	</head>
 	<body>
-		<Navigation portalId={portalId} />
-		<slot />
+		{isLoggedIn ? (
+			<>
+				<Navigation portalId={portalId} />
+				<slot />
+			</>
+		) : (
+			<PasswordProtect />
+		)}
 	</body>
 </html>
 
