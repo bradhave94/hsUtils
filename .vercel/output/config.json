@@ -1,0 +1,71 @@
+{
+	"version": 3,
+	"routes": [
+		{
+			"src": "^/_astro/(.*)$",
+			"headers": {
+				"cache-control": "public, max-age=31536000, immutable"
+			},
+			"continue": true
+		},
+		{
+			"handle": "filesystem"
+		},
+		{
+			"src": "^\\/_image$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/api\\/blog-posts\\/restore\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/api\\/blog-posts\\/update-batch\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/api\\/blog-posts\\/update-slug\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/api\\/domains\\/change\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/api\\/pages\\/restore\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/api\\/pages\\/update-batch\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/api\\/pages\\/update-slug\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/api\\/templates\\/change\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/api\\/templates\\/change-blog\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/blog-posts\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/callback\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/pages\\/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^\\/$",
+			"dest": "_render"
+		}
+	]
+}

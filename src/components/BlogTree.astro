@@ -1,0 +1,679 @@
+---
+const { posts, blogInfo } = Astro.props;
+const portalId = Astro.cookies.get('hubspot_portal_id')?.value;
+
+function getStatusLabel(post) {
+    if (post.archivedAt !== 0) return 'Archived';
+    switch (post.state || 'DRAFT') {
+        case 'PUBLISHED': return 'Published';
+        case 'DRAFT': return 'Draft';
+        case 'SCHEDULED': return 'Scheduled';
+        case 'PUBLISHED_OR_SCHEDULED': return 'Published';
+        default: return post.state || 'Draft';
+    }
+}
+
+function getStatusClass(status) {
+    switch (status.toLowerCase()) {
+        case 'published': return 'text-green-500';
+        case 'draft': return 'text-yellow-500';
+        case 'archived': return 'text-red-500';
+        case 'scheduled': return 'text-blue-500';
+        default: return 'text-gray-500';
+    }
+}
+
+function formatDate(dateString) {
+    if (!dateString || dateString === "1970-01-01T00:00:00Z" || dateString == 0) {
+        return 'N/A';
+    }
+    return new Date(dateString).toLocaleString();
+}
+
+// Group posts by blog
+const groupedPosts = blogInfo.reduce((acc, blog) => {
+    // Get posts for this blog
+    const blogPosts = posts.filter(post => post.url?.includes(blog.url));
+
+    // Sort posts: Published first, then Draft, then Archived
+    blogPosts.sort((a, b) => {
+        const getStatusOrder = (post) => {
+            if (post.archivedAt != 0) return 2;  // Archived last
+            if (post.state === 'DRAFT') return 1; // Draft second
+            return 0;  // Published first
+        };
+
+        const aOrder = getStatusOrder(a);
+        const bOrder = getStatusOrder(b);
+
+        // First sort by status
+        if (aOrder !== bOrder) {
+            return aOrder - bOrder;
+        }
+
+        // Then by name
+        return (a.name || '').localeCompare(b.name || '');
+    });
+
+    acc[blog.url] = blogPosts;
+    return acc;
+}, {});
+
+// Add "No Blog" group for posts that don't match any blog
+const noBlogPosts = posts.filter(post =>
+    !blogInfo.some(blog => post.url?.includes(blog.url))
+);
+
+// Sort "No Blog" posts the same way
+noBlogPosts.sort((a, b) => {
+    const getStatusOrder = (post) => {
+        if (post.archivedAt != 0) return 2;
+        if (post.state === 'DRAFT') return 1;
+        return 0;
+    };
+
+    const aOrder = getStatusOrder(a);
+    const bOrder = getStatusOrder(b);
+
+    if (aOrder !== bOrder) {
+        return aOrder - bOrder;
+    }
+
+    return (a.name || '').localeCompare(b.name || '');
+});
+
+groupedPosts['No Blog'] = noBlogPosts;
+---
+
+<div class="page-tree-container">
+    <div class="flex space-x-4 mb-4">
+        <button id="changeSelectedBtn" class="change-selected-btn bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+            Change Selected Template
+        </button>
+        <button id="changeSelectedDomainsBtn" class="change-selected-btn bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+            Change Selected Domains
+        </button>
+        <button id="changeSelectedSlugsBtn" class="change-selected-btn bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-4 rounded transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+            Change Selected Slugs
+        </button>
+    </div>
+
+    <ul class="space-y-3">
+        {Object.entries(groupedPosts).map(([blogUrl, posts]) => (
+            <li class="blog-group">
+                <details class="bg-gray-800 rounded-lg p-4 open">
+                    <summary class="flex items-center justify-between cursor-pointer">
+                        <div class="flex items-center">
+                            <input type="checkbox" class="blog-checkbox custom-checkbox mr-2" data-blog-url={blogUrl} />
+                            <span class="text-xl font-semibold text-white">{blogUrl}</span>
+                            <span class="ml-2 text-sm text-blue-400">({posts.length} posts)</span>
+                        </div>
+                    </summary>
+                    <ul class="mt-4 space-y-4">
+                        {posts.map(post => {
+                            const status = getStatusLabel(post);
+                            return (
+                                <li class="post bg-gray-700 rounded-lg p-4">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex-grow">
+                                            <div class="flex items-center">
+                                                <label class="flex items-center cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        class="post-checkbox custom-checkbox mr-2 aspect-square"
+                                                        data-post-id={post.id}
+                                                        data-template-path={post.templatePath}
+                                                    />
+                                                    <h3 class="text-2xl font-semibold text-blue-400 leading-none">
+                                                        {post.name}
+                                                    </h3>
+                                                </label>
+                                            </div>
+                                            <div class="mt-2 text-sm text-gray-300">
+                                                <p>URL: {post.url}</p>
+                                                <p>Status: <span class={getStatusClass(status)}>{status}</span></p>
+                                                <p>Created: {formatDate(post.created || '')}</p>
+                                                <p>Updated: {formatDate(post.updated ? post.updated.toString() : '')}</p>
+                                                {post.archivedAt != 0 &&
+                                                    <p>Archived: {formatDate(post.archivedAt)}</p>
+                                                }
+                                            </div>
+                                        </div>
+                                        <div class="flex flex-col space-y-2 min-w-[200px] ml-24">
+                                            <button
+                                                class="change-template-btn bg-blue-600 hover:bg-blue-700 text-white py-1 px-3 rounded transition duration-300"
+                                                data-page-id={post.id}
+                                                data-template-path={post.templatePath}
+                                            >
+                                                Change Template
+                                            </button>
+                                            <button
+                                                class="change-domain-btn bg-red-600 hover:bg-blue-700 text-white py-1 px-3 rounded transition duration-300"
+                                                data-page-id={post.id}
+                                            >
+                                                Change Domain
+                                            </button>
+                                            <button
+                                                class="change-slug-btn bg-yellow-600 hover:bg-yellow-700 text-white py-1 px-3 rounded transition duration-300"
+                                                data-page-id={post.id}
+                                                data-current-url={post.url}
+                                            >
+                                                Change Slug
+                                            </button>
+                                            <a
+                                                href={post.url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                class="bg-green-600 hover:bg-green-700 text-white py-1 px-3 rounded transition duration-300 text-center"
+                                            >
+                                                View Live Post
+                                            </a>
+                                            <a
+                                                href={`https://app.hubspot.com/blog/${portalId}/editor/${post.id}/content`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                class="bg-purple-600 hover:bg-purple-700 text-white py-1 px-3 rounded transition duration-300 text-center"
+                                            >
+                                                Edit in HubSpot
+                                            </a>
+                                            {post.archivedAt != 0 && (
+                                                <button
+                                                    class="restore-page-btn bg-orange-500 hover:bg-orange-600 text-white py-1 px-3 rounded transition duration-300"
+                                                    data-page-id={post.id}
+                                                >
+                                                    Restore Post
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                </details>
+            </li>
+        ))}
+    </ul>
+</div>
+
+<dialog id="slugModal" class="bg-gray-800 p-6 rounded-lg shadow-xl text-white w-[800px]">
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="text-xl font-bold">Change URL Slugs</h3>
+        <button class="close-modal-btn text-gray-400 hover:text-white">&times;</button>
+    </div>
+    <div class="space-y-4">
+        <div class="flex space-x-2">
+            <button class="pattern-btn bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded" data-pattern="#^(.*)$#subroute/$1">Add Subroute</button>
+            <button class="pattern-btn bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded" data-pattern="#find(.*)$#replace$1">Replace Section</button>
+        </div>
+        <div>
+            <label class="block text-sm font-medium mb-1">Pattern</label>
+            <input type="text" id="patternInput" class="w-full p-2 bg-gray-700 rounded" placeholder="#pattern#replacement">
+            <div class="mt-1 text-sm text-gray-400">
+                Examples:
+                <ul class="list-disc list-inside ml-2 space-y-1">
+                    <li>#^(.*)$#subroute/$1 → adds subroute/ to start</li>
+                    <li>#find(.*)$#replace$1 → changes /find to /replace</li>
+                    <li>Use $1 to reference captured content</li>
+                </ul>
+            </div>
+        </div>
+        <div>
+            <label class="block text-sm font-medium mb-1">Current URLs</label>
+            <textarea id="currentUrls" class="w-full h-32 p-2 bg-gray-700 rounded" readonly></textarea>
+            <button class="copy-urls-btn mt-1 text-sm text-blue-400 hover:text-blue-300">Copy URLs</button>
+        </div>
+        <div>
+            <label class="block text-sm font-medium mb-1">Preview</label>
+            <textarea id="previewUrls" class="w-full h-32 p-2 bg-gray-700 rounded" readonly></textarea>
+        </div>
+        <div class="flex justify-end space-x-3 mt-4">
+            <button class="close-modal-btn bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded">Cancel</button>
+            <button id="applyChangesBtn" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded">Apply Changes</button>
+        </div>
+    </div>
+</dialog>
+
+<style>
+    .custom-checkbox {
+        appearance: none;
+        -webkit-appearance: none;
+        width: 1.5rem;
+        height: 1.5rem;
+        border: 2px solid #4a5568;
+        border-radius: 0.25rem;
+        background-color: #2d3748;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        margin-right: 0.5rem;
+        transition: all 0.2s ease-in-out;
+    }
+
+    .custom-checkbox:checked {
+        @apply bg-blue-600 border-blue-400;
+    }
+
+    .custom-checkbox:checked::after {
+        content: '\2714';
+        color: white;
+        font-size: 14px;
+        font-weight: bold;
+    }
+
+    .custom-checkbox:focus {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.5);
+    }
+
+    .custom-checkbox:hover {
+        border-color: #4299e1;
+    }
+</style>
+
+<script define:vars={{ blogInfo }}>
+    document.addEventListener('DOMContentLoaded', () => {
+        const blogCheckboxes = document.querySelectorAll('.blog-checkbox');
+        const postCheckboxes = document.querySelectorAll('.post-checkbox');
+        const changeSelectedBtn = document.getElementById('changeSelectedBtn');
+        const changeSelectedDomainsBtn = document.getElementById('changeSelectedDomainsBtn');
+        const changeSelectedSlugsBtn = document.getElementById('changeSelectedSlugsBtn');
+
+        // Handle blog checkbox changes
+        blogCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', (e) => {
+                const blogDetails = (e.target).closest('details');
+                const postCheckboxes = blogDetails?.querySelectorAll('.post-checkbox');
+                const isChecked = (e.target).checked;
+
+                postCheckboxes?.forEach((cb) => {
+                    (cb).checked = isChecked;
+                });
+
+                updateChangeSelectedButtons();
+            });
+        });
+
+        // Handle post checkbox changes
+        postCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', (e) => {
+                const blogDetails = (e.target).closest('details');
+                const blogCheckbox = blogDetails?.querySelector('.blog-checkbox');
+                const postCheckboxes = blogDetails?.querySelectorAll('.post-checkbox');
+
+                if (postCheckboxes) {
+                    const allChecked = Array.from(postCheckboxes)
+                        .every((cb) => (cb).checked);
+                    const someChecked = Array.from(postCheckboxes)
+                        .some((cb) => (cb).checked);
+
+                    if (blogCheckbox) {
+                        blogCheckbox.checked = allChecked;
+                        blogCheckbox.indeterminate = someChecked && !allChecked;
+                    }
+                }
+
+                updateChangeSelectedButtons();
+            });
+        });
+
+        function updateChangeSelectedButtons() {
+            const anyChecked = Array.from(postCheckboxes)
+                .some((cb) => (cb).checked);
+
+            if (changeSelectedBtn) {
+                (changeSelectedBtn).disabled = !anyChecked;
+            }
+            if (changeSelectedDomainsBtn) {
+                (changeSelectedDomainsBtn).disabled = !anyChecked;
+            }
+            if (changeSelectedSlugsBtn) {
+                (changeSelectedSlugsBtn).disabled = !anyChecked;
+            }
+        }
+
+        // Handle Change Selected Template
+        changeSelectedBtn?.addEventListener('click', async () => {
+            const selectedPostIds = Array.from(document.querySelectorAll('.post-checkbox:checked'))
+                .map(checkbox => checkbox.getAttribute('data-post-id'))
+                .filter(id => id !== null);
+
+            if (selectedPostIds.length === 0) {
+                alert('No posts selected. Please select at least one post.');
+                return;
+            }
+
+            const newTemplatePath = await window.openTemplateModal(selectedPostIds, 'Multiple');
+            if (newTemplatePath) {
+                try {
+                    await apiCall('/api/templates/change-blog', {
+                        inputs: selectedPostIds.map(id => ({
+                            id,
+                            templatePath: newTemplatePath
+                        }))
+                    });
+                    alert('Templates updated successfully!');
+                    location.reload();
+                } catch (error) {
+                    console.error('Error updating templates:', error);
+                    alert('Failed to update templates. Please try again.');
+                }
+            }
+        });
+
+        // Handle Change Selected Domains
+        changeSelectedDomainsBtn?.addEventListener('click', async () => {
+            const selectedPostIds = Array.from(document.querySelectorAll('.post-checkbox:checked'))
+                .map(checkbox => checkbox.getAttribute('data-post-id'))
+                .filter(id => id !== null);
+
+            if (selectedPostIds.length === 0) {
+                alert('No posts selected. Please select at least one post.');
+                return;
+            }
+
+            try {
+                const newDomain = await window.openDomainModal('multiple');
+                if (newDomain) {
+                    const results = await Promise.allSettled(
+                        selectedPostIds.map(async (postId) => {
+                            const response = await fetch('/api/domains/change', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    pageId: postId,
+                                    domain: newDomain
+                                }),
+                            });
+
+                            if (!response.ok) {
+                                const data = await response.json();
+                                throw new Error(data.message || 'Failed to update domain');
+                            }
+
+                            return response.json();
+                        })
+                    );
+
+                    const successful = results.filter(result => result.status === 'fulfilled').length;
+                    const failed = results.filter(result => result.status === 'rejected').length;
+
+                    if (failed === 0) {
+                        alert(`Successfully updated domain for all ${successful} posts!`);
+                    } else {
+                        alert(`Updated domain for ${successful} posts. Failed to update ${failed} posts.`);
+                    }
+
+                    location.reload();
+                }
+            } catch (error) {
+                console.error('Error updating domains:', error);
+                alert('An error occurred while updating domains. Please try again.');
+            }
+        });
+
+        // Handle Change Selected Slugs
+        changeSelectedSlugsBtn?.addEventListener('click', handleChangeSelectedSlugs);
+
+        // Handle individual slug changes
+        document.querySelectorAll('.change-slug-btn').forEach(btn => {
+            btn.addEventListener('click', handleChangeSlug);
+        });
+
+        // Handle individual domain changes
+        document.querySelectorAll('.change-domain-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const target = e.target;
+                const postId = target.getAttribute('data-page-id');
+
+                if (!postId) {
+                    console.error('No post ID found');
+                    return;
+                }
+
+                try {
+                    const newDomain = await window.openDomainModal(postId);
+                    if (newDomain) {
+                        const response = await fetch('/api/domains/change', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                pageId: postId,
+                                domain: newDomain
+                            }),
+                        });
+
+                        if (!response.ok) {
+                            const data = await response.json();
+                            throw new Error(data.message || 'Failed to update domain');
+                        }
+
+                        alert('Domain updated successfully!');
+                        location.reload();
+                    }
+                } catch (error) {
+                    console.error('Error updating domain:', error);
+                    alert(error instanceof Error ? error.message : 'Failed to update domain. Please try again.');
+                }
+            });
+        });
+
+        // Slug Modal Functionality
+        async function handleChangeSlug(event) {
+            const target = event.target;
+            const postId = target.getAttribute('data-page-id');
+            const currentUrl = target.getAttribute('data-current-url');
+
+            if (!postId || !currentUrl) {
+                console.error('Missing post ID or URL');
+                return;
+            }
+
+            window.selectedPages = [{
+                pageId: postId,
+                currentUrl
+            }];
+
+            // Find the blog base URL and extract everything after it
+            const blogBasePath = blogInfo.find(b => currentUrl.includes(b.url))?.url;
+            const fullPath = blogBasePath ?
+                currentUrl.substring(currentUrl.indexOf(blogBasePath) + blogBasePath.length).replace(/^\/+/, '') :
+                currentUrl.split('/').pop() || '';
+
+            const currentUrlsTextarea = document.getElementById('currentUrls');
+            currentUrlsTextarea.value = fullPath;  // Now shows "it/news/replaceplace"
+
+            const modal = document.getElementById('slugModal');
+            modal.showModal();
+
+            setupSlugModal();
+        }
+
+        async function handleChangeSelectedSlugs() {
+            const selectedCheckboxes = document.querySelectorAll('.post-checkbox:checked');
+            const selectedPages = Array.from(selectedCheckboxes)
+                .map(checkbox => {
+                    const postId = checkbox.getAttribute('data-post-id');
+                    const currentUrl = checkbox.closest('.post')?.querySelector('p')?.textContent?.replace('URL: ', '');
+                    return { pageId: postId, currentUrl };
+                })
+                .filter(page =>
+                    page.pageId !== null && page.currentUrl !== undefined
+                );
+
+            if (selectedPages.length === 0) {
+                alert('No posts selected. Please select at least one post.');
+                return;
+            }
+
+            window.selectedPages = selectedPages;
+
+            // Extract paths after blog base URL for each selected post
+            const currentUrlsTextarea = document.getElementById('currentUrls');
+            currentUrlsTextarea.value = selectedPages
+                .map(p => {
+                    const blogBasePath = blogInfo.find(b => p.currentUrl.includes(b.url))?.url;
+                    return blogBasePath ?
+                        p.currentUrl.substring(p.currentUrl.indexOf(blogBasePath) + blogBasePath.length).replace(/^\/+/, '') :
+                        p.currentUrl.split('/').pop() || '';
+                })
+                .join('\n');
+
+            const modal = document.getElementById('slugModal');
+            modal.showModal();
+
+            setupSlugModal();
+        }
+
+        function setupSlugModal() {
+            const modal = document.getElementById('slugModal');
+            const patternInput = document.getElementById('patternInput');
+            const previewUrls = document.getElementById('previewUrls');
+            const applyChangesBtn = document.getElementById('applyChangesBtn');
+            const closeModalBtns = document.querySelectorAll('.close-modal-btn');
+            const copyUrlsBtn = document.querySelector('.copy-urls-btn');
+            const patternBtns = document.querySelectorAll('.pattern-btn');
+
+            // Pattern buttons
+            patternBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const pattern = btn.getAttribute('data-pattern');
+                    if (pattern && patternInput) {
+                        patternInput.value = pattern;
+                        updatePreview();
+                    }
+                });
+            });
+
+            // Close modal buttons
+            closeModalBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    modal.close();
+                });
+            });
+
+            // Copy URLs button
+            copyUrlsBtn?.addEventListener('click', () => {
+                const currentUrls = document.getElementById('currentUrls');
+                currentUrls.select();
+                document.execCommand('copy');
+                (copyUrlsBtn).textContent = 'Copied!';
+                setTimeout(() => {
+                    (copyUrlsBtn).textContent = 'Copy URLs';
+                }, 2000);
+            });
+
+            // Pattern input
+            patternInput?.addEventListener('input', updatePreview);
+
+            function updatePreview() {
+                try {
+                    const patternValue = patternInput.value;
+                    const [, pattern, replacement] = patternValue.match(/#(.+?)#(.*)/) || [];
+
+                    if (!pattern || replacement === undefined) {
+                        previewUrls.value = 'Invalid pattern format. Use #pattern#replacement';
+                        return;
+                    }
+
+                    const regex = new RegExp(pattern);
+                    const previews = window.selectedPages.map(page => {
+                        // Get the blog base URL
+                        const blogBasePath = blogInfo.find(b => page.currentUrl.includes(b.url))?.url;
+                        // Extract everything after the blog base URL
+                        const currentSlug = blogBasePath ?
+                            page.currentUrl.substring(page.currentUrl.indexOf(blogBasePath) + blogBasePath.length).replace(/^\/+/, '') :
+                            page.currentUrl.split('/').pop() || '';
+
+                        // Apply the pattern only to the slug
+                        let newSlug = currentSlug.replace(regex, replacement)
+                            .replace(/^\/|\/$/g, ''); // Only remove leading/trailing slashes, preserve internal ones
+
+                        return `${currentSlug} → ${newSlug}`;
+                    });
+
+                    previewUrls.value = previews.join('\n');
+                } catch (error) {
+                    previewUrls.value = 'Invalid regex pattern: ' + (error instanceof Error ? error.message : 'Unknown error');
+                }
+            }
+
+            // Apply changes button
+            applyChangesBtn?.addEventListener('click', async () => {
+                const patternValue = patternInput.value;
+                const [, pattern, replacement] = patternValue.match(/#(.+?)#(.*)/) || [];
+
+                if (!pattern || replacement === undefined) {
+                    alert('Invalid pattern format. Please use #pattern#replacement format.');
+                    return;
+                }
+
+                try {
+                    const regex = new RegExp(pattern);
+                    const results = await Promise.allSettled(
+                        window.selectedPages.map(async (page) => {
+                            // Get the blog base URL
+                            const blogBasePath = blogInfo.find(b => page.currentUrl.includes(b.url))?.url;
+                            // Extract everything after the blog base URL
+                            const currentSlug = blogBasePath ?
+                                page.currentUrl.substring(page.currentUrl.indexOf(blogBasePath) + blogBasePath.length).replace(/^\/+/, '') :
+                                page.currentUrl.split('/').pop() || '';
+
+                            // Apply the pattern to the full path
+                            let newSlug = currentSlug.replace(regex, replacement)
+                                .replace(/^\/|\/$/g, ''); // Only remove leading/trailing slashes, preserve internal ones
+
+                            const response = await fetch('/api/blog-posts/update-slug', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    pageId: page.pageId,
+                                    newSlug
+                                }),
+                            });
+
+                            if (!response.ok) {
+                                const data = await response.json();
+                                throw new Error(data.message || 'Failed to update slug');
+                            }
+
+                            return response.json();
+                        })
+                    );
+
+                    const successful = results.filter(result => result.status === 'fulfilled').length;
+                    const failed = results.filter(result => result.status === 'rejected').length;
+
+                    if (failed === 0) {
+                        alert(`Successfully updated slugs for all ${successful} posts!`);
+                    } else {
+                        alert(`Updated slugs for ${successful} posts. Failed to update ${failed} posts.`);
+                    }
+
+                    modal.close();
+                    location.reload();
+                } catch (error) {
+                    console.error('Error updating slugs:', error);
+                    alert('Invalid regex pattern or error updating slugs. Please try again.');
+                }
+            });
+        }
+
+        async function apiCall(endpoint, data) {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+            if (!response.ok) throw new Error('API call failed');
+            return response.json();
+        }
+    });
+</script>

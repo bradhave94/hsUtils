@@ -1,0 +1,65 @@
+---
+import { getDomains } from '../lib/hubspot/api';
+import type { HubSpotDomain } from '../types/Domain';
+
+const accessTokenCookie = Astro.cookies.get('hubspot_access_token');
+const accessToken = accessTokenCookie ? accessTokenCookie.value : null;
+const domains = await getDomains(accessToken);
+---
+
+<div id="domainModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-gray-800 p-6 rounded-lg max-w-lg w-full">
+        <h2 class="text-2xl font-bold mb-4 text-white">Select Domain</h2>
+        <select id="domainSelect" class="w-full p-2 mb-4 bg-gray-700 text-white rounded border border-gray-600">
+            {domains.map((domain: HubSpotDomain) => (
+                <option value={domain.domain}>{domain.domain}</option>
+            ))}
+        </select>
+        <div class="flex justify-end space-x-2">
+            <button id="cancelDomainBtn" class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors">
+                Cancel
+            </button>
+            <button id="confirmDomainBtn" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
+                Confirm
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let resolveDomainPromise: (value: string | null) => void;
+
+    window.openDomainModal = (pageId: string) => {
+        const modal = document.getElementById('domainModal');
+        const title = modal?.querySelector('h2');
+
+        if (title) {
+            title.textContent = pageId === 'multiple'
+                ? 'Select Domain for Multiple Pages'
+                : 'Select Domain';
+        }
+
+        modal?.classList.remove('hidden');
+        modal?.classList.add('flex');
+
+        return new Promise<string | null>((resolve) => {
+            resolveDomainPromise = resolve;
+        });
+    };
+
+    document.getElementById('cancelDomainBtn')?.addEventListener('click', () => {
+        const modal = document.getElementById('domainModal');
+        modal?.classList.add('hidden');
+        modal?.classList.remove('flex');
+        resolveDomainPromise(null);
+    });
+
+    document.getElementById('confirmDomainBtn')?.addEventListener('click', () => {
+        const select = document.getElementById('domainSelect') as HTMLSelectElement;
+        const selectedDomain = select.value;
+        const modal = document.getElementById('domainModal');
+        modal?.classList.add('hidden');
+        modal?.classList.remove('flex');
+        resolveDomainPromise(selectedDomain);
+    });
+</script>
