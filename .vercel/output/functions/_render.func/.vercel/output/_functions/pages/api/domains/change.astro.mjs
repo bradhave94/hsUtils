@@ -1,9 +1,61 @@
 import { u as updatePageDomain } from '../../../chunks/api_D5lN87jw.mjs';
 export { renderers } from '../../../renderers.mjs';
 
+const prerender = false;
+
+
 const POST = async ({ request, cookies }) => {
     try {
-        const { pageId, domain } = await request.json();
+        console.log('Request headers:', Object.fromEntries(request.headers));
+
+        const hasBody = request.body !== null && request.body !== undefined;
+        console.log('Has body:', hasBody);
+
+        let body;
+        try {
+            body = await request.json();
+            console.log('Parsed body:', body);
+        } catch (parseError) {
+            console.error('Error parsing JSON:', parseError);
+            return new Response(JSON.stringify({
+                success: false,
+                message: 'Invalid JSON in request body',
+                debug: parseError.message
+            }), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+        }
+
+        if (!body) {
+            return new Response(JSON.stringify({
+                success: false,
+                message: 'Request body is empty'
+            }), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+        }
+
+        const pageId = body.pageId;
+        const domain = body.domain;
+
+        if (!pageId || !domain) {
+            return new Response(JSON.stringify({
+                success: false,
+                message: 'Missing required fields: pageId and domain'
+            }), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+        }
+
         const accessToken = cookies.get('hubspot_access_token')?.value;
 
         if (!accessToken) {
@@ -45,7 +97,8 @@ const POST = async ({ request, cookies }) => {
 
 const _page = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    POST
+    POST,
+    prerender
 }, Symbol.toStringTag, { value: 'Module' }));
 
 const page = () => _page;

@@ -1,10 +1,10 @@
 /* empty css                                      */
 import { c as createComponent, r as renderTemplate, m as maybeRenderHead, a as addAttribute, e as createAstro, g as defineScriptVars, f as renderComponent } from '../chunks/astro/server_QBnrvN_q.mjs';
 import 'kleur/colors';
-import { $ as $$Layout } from '../chunks/Layout_DnTCzner.mjs';
+import { $ as $$Layout } from '../chunks/Layout_D4YqzTMS.mjs';
 import 'clsx';
 /* empty css                                 */
-import { $ as $$TemplateModal, a as $$DomainModal } from '../chunks/DomainModal_DvpENxwL.mjs';
+import { $ as $$TemplateModal, a as $$DomainModal } from '../chunks/DomainModal_BloStABa.mjs';
 import { k as getSitePages, e as getDomains } from '../chunks/api_D5lN87jw.mjs';
 export { renderers } from '../renderers.mjs';
 
@@ -92,13 +92,14 @@ const $$PageTree = createComponent(async ($$result, $$props, $$slots) => {
   })} </ul> </details> </li>`)} </ul> </details> </li>`)} </ul> </div>`)} </div> <dialog id="slugModal" class="bg-gray-800 p-6 rounded-lg shadow-xl text-white w-[800px]" data-astro-cid-35cxyesp> <div class="flex justify-between items-center mb-4" data-astro-cid-35cxyesp> <h3 class="text-xl font-bold" data-astro-cid-35cxyesp>Change URL Slugs</h3> <button class="close-modal-btn text-gray-400 hover:text-white" data-astro-cid-35cxyesp>&times;</button> </div> <div class="space-y-4" data-astro-cid-35cxyesp> <div class="flex space-x-2" data-astro-cid-35cxyesp> <button class="pattern-btn bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded" data-pattern="#^(.*)$#subroute/$1" data-astro-cid-35cxyesp>Add Subroute</button> <button class="pattern-btn bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded" data-pattern="#^\/find(.*)$#/replace$1" data-astro-cid-35cxyesp>Replace Section</button> </div> <div data-astro-cid-35cxyesp> <label class="block text-sm font-medium mb-1" data-astro-cid-35cxyesp>Pattern</label> <input type="text" id="patternInput" class="w-full p-2 bg-gray-700 rounded" placeholder="#pattern#replacement" data-astro-cid-35cxyesp> <div class="mt-1 text-sm text-gray-400" data-astro-cid-35cxyesp>
 Examples:
 <ul class="list-disc list-inside ml-2 space-y-1" data-astro-cid-35cxyesp> <li data-astro-cid-35cxyesp>#^(.*)$#subroute/$1 → adds subroute/ to start</li> <li data-astro-cid-35cxyesp>#^\\/find(.*)$#/replace$1 → changes /find to /replace</li> <li data-astro-cid-35cxyesp>Use $1 to reference captured content</li> </ul> </div> </div> <div data-astro-cid-35cxyesp> <label class="block text-sm font-medium mb-1" data-astro-cid-35cxyesp>Current URLs</label> <textarea id="currentUrls" class="w-full h-32 p-2 bg-gray-700 rounded" readonly data-astro-cid-35cxyesp></textarea> <button class="copy-urls-btn mt-1 text-sm text-blue-400 hover:text-blue-300" data-astro-cid-35cxyesp>Copy URLs</button> </div> <div data-astro-cid-35cxyesp> <label class="block text-sm font-medium mb-1" data-astro-cid-35cxyesp>Preview</label> <textarea id="previewUrls" class="w-full h-32 p-2 bg-gray-700 rounded" readonly data-astro-cid-35cxyesp></textarea> </div> <div class="flex justify-end space-x-3 mt-4" data-astro-cid-35cxyesp> <button class="close-modal-btn bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded" data-astro-cid-35cxyesp>Cancel</button> <button id="applyChangesBtn" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded" data-astro-cid-35cxyesp>Apply Changes</button> </div> </div> </dialog>  `;
-}, "C:/Users/bradhave/Documents/workspace/hubspot/api/changeTemplate/src/components/PageTree.astro", void 0);
+}, "C:/Users/bradhave/Documents/workspace/hubspot/api/hsUtils/src/components/PageTree.astro", void 0);
 
 var __freeze = Object.freeze;
 var __defProp = Object.defineProperty;
 var __template = (cooked, raw) => __freeze(__defProp(cooked, "raw", { value: __freeze(cooked.slice()) }));
 var _a;
 const $$Astro = createAstro();
+const prerender = false;
 const $$Pages = createComponent(async ($$result, $$props, $$slots) => {
   const Astro2 = $$result.createAstro($$Astro, $$props, $$slots);
   Astro2.self = $$Pages;
@@ -148,15 +149,16 @@ const $$Pages = createComponent(async ($$result, $$props, $$slots) => {
   };
   await getDomains(accessToken);
   return renderTemplate(_a || (_a = __template(["", " <script>(function(){", "\n    document.addEventListener('DOMContentLoaded', () => {\n        // Helper function for API calls\n        async function apiCall(endpoint, data) {\n            const response = await fetch(endpoint, {\n                method: 'POST',\n                headers: { 'Content-Type': 'application/json' },\n                body: JSON.stringify(data),\n            });\n            if (!response.ok) throw new Error('API call failed');\n            return response.json();\n        }\n\n        // Event listener for changing a single template\n        document.querySelectorAll('.change-template-btn').forEach(btn => {\n            btn.addEventListener('click', async () => {\n                const { pageId, templatePath: currentTemplatePath } = btn.dataset;\n                const newTemplatePath = await window.openTemplateModal(pageId, currentTemplatePath);\n                if (newTemplatePath) {\n                    try {\n                        await apiCall(API_ENDPOINTS.changeTemplate, { pageId, templatePath: newTemplatePath });\n                        alert('Template updated successfully!');\n                        location.reload();\n                    } catch (error) {\n                        handleError('Failed to update template. Please try again.');\n                    }\n                }\n            });\n        });\n\n        // Event listener for changing multiple templates\n        document.querySelectorAll('.change-all-templates-btn').forEach(btn => {\n            btn.addEventListener('click', async (e) => {\n                e.stopPropagation();\n                const { templatePath } = btn.dataset;\n                const pageIds = Array.from(btn.closest('details').querySelectorAll('.change-template-btn'))\n                    .map(btn => btn.getAttribute('data-page-id'));\n\n                const newTemplatePath = await window.openTemplateModal(pageIds, templatePath);\n                if (newTemplatePath) {\n                    try {\n                        await apiCall(API_ENDPOINTS.updateBatch, {\n                            inputs: pageIds.map(id => ({ id, templatePath: newTemplatePath }))\n                        });\n                        alert('Templates updated successfully!');\n                        location.reload();\n                    } catch (error) {\n                        handleError('Failed to update templates. Please try again.');\n                    }\n                }\n            });\n        });\n\n        // Event listener for restoring pages\n        document.querySelectorAll('.restore-page-btn').forEach(btn => {\n            btn.addEventListener('click', async () => {\n                const { pageId } = btn.dataset;\n                if (pageId) {\n                    try {\n                        const result = await apiCall(API_ENDPOINTS.restorePage, { pageId });\n                        if (result.success) {\n                            alert('Page restored successfully!');\n                            location.reload();\n                        } else {\n                            throw new Error(result.error || 'Failed to restore page');\n                        }\n                    } catch (error) {\n                        handleError('Failed to restore page. Please try again.');\n                    }\n                }\n            });\n        });\n    });\n})();<\/script>"])), renderComponent($$result, "Layout", $$Layout, { "title": "HubSpot Site Pages" }, { "default": ($$result2) => renderTemplate` ${maybeRenderHead()}<main class="container mx-auto max-w-4xl px-4 py-8"> <h1 class="text-4xl font-bold mb-8 text-blue-200">HubSpot Site Pages <span class="text-xl text-blue-500">(${pages.length} pages)</span></h1> <p class="text-sm max-w-xl mb-6 text-blue-100">Click a template to change all pages in that template. Click a page to change that page's template. Click <span class="text-orange-300">Restore Page</span> to restore an archived page.</p> ${error && renderTemplate`<p class="text-red-500 mb-6 p-4 bg-red-100 rounded-lg">${error}</p>`} ${pages.length === 0 ? renderTemplate`<p class="text-gray-400 text-xl">No pages found. ${error ? "An error occurred while fetching pages." : ""}</p>` : renderTemplate`${renderComponent($$result2, "PageTree", $$PageTree, { "pages": pages })}`} <a href="/" class="inline-block mt-8 bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded transition duration-300">Back to Home</a> </main> ${renderComponent($$result2, "TemplateModal", $$TemplateModal, {})} ${renderComponent($$result2, "DomainModal", $$DomainModal, {})} ` }), defineScriptVars({ API_ENDPOINTS }));
-}, "C:/Users/bradhave/Documents/workspace/hubspot/api/changeTemplate/src/pages/pages.astro", void 0);
+}, "C:/Users/bradhave/Documents/workspace/hubspot/api/hsUtils/src/pages/pages.astro", void 0);
 
-const $$file = "C:/Users/bradhave/Documents/workspace/hubspot/api/changeTemplate/src/pages/pages.astro";
+const $$file = "C:/Users/bradhave/Documents/workspace/hubspot/api/hsUtils/src/pages/pages.astro";
 const $$url = "/pages";
 
 const _page = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
     default: $$Pages,
     file: $$file,
+    prerender,
     url: $$url
 }, Symbol.toStringTag, { value: 'Module' }));
 

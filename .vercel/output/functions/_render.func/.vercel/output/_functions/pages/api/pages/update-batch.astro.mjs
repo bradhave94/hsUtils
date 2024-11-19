@@ -1,6 +1,8 @@
 import { a as updatePagesBatch } from '../../../chunks/api_D5lN87jw.mjs';
 export { renderers } from '../../../renderers.mjs';
 
+const prerender = false;
+
 const POST = async ({ request, cookies }) => {
     const accessToken = cookies.get('hubspot_access_token')?.value;
 
@@ -36,7 +38,8 @@ const POST = async ({ request, cookies }) => {
 
 const _page = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    POST
+    POST,
+    prerender
 }, Symbol.toStringTag, { value: 'Module' }));
 
 const page = () => _page;

@@ -249,6 +249,7 @@ const groupPages = new URLSearchParams(Astro.url.search).get('group') !== 'false
                 const newDomain = await window.openDomainModal(pageId);
 
                 if (newDomain) {
+                    console.log('newDomain', newDomain, pageId);
                     const response = await fetch('/api/domains/change', {
                         method: 'POST',
                         headers: {

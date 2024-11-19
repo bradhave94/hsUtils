@@ -1,5 +1,6 @@
 export { renderers } from '../../../renderers.mjs';
 
+const prerender = false;
 const POST = async ({ request }) => {
     const { pageId, templatePath } = await request.json();
     const accessToken = getAccessTokenFromRequest(request);
@@ -16,9 +17,15 @@ const POST = async ({ request }) => {
     }
 };
 
+const GET = async ({ request }) => {
+    return new Response(JSON.stringify({ message: 'Hello, world!' }), { status: 200 });
+};
+
 const _page = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    POST
+    GET,
+    POST,
+    prerender
 }, Symbol.toStringTag, { value: 'Module' }));
 
 const page = () => _page;

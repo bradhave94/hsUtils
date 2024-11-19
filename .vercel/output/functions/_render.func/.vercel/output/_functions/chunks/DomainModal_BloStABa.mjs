@@ -72,7 +72,7 @@ const $$TemplateModal = createComponent(async ($$result, $$props, $$slots) => {
   }
   const fileTree = templates ? buildFileTree(templates) : null;
   return renderTemplate`${maybeRenderHead()}<div id="templateModal" class="modal fixed inset-0 z-50 overflow-hidden bg-black bg-opacity-50 flex items-center justify-center p-4" role="dialog" aria-labelledby="modalTitle" aria-modal="true"> <div class="modal-content bg-gray-900 text-white rounded-lg shadow-xl w-full max-w-4xl flex flex-col h-[90vh]"> <div class="p-6 sm:p-8"> <h2 id="modalTitle" class="text-2xl sm:text-3xl font-bold mb-4 text-orange-500">Change Template</h2> <p id="modalDescription" class="mb-4 text-gray-300 text-sm sm:text-base"></p> </div> <div class="file-tree-container flex-grow overflow-y-auto px-6 sm:px-8" role="tree"> <ul class="space-y-3"> ${fileTree && renderTemplate`${renderComponent($$result, "Fragment", Fragment, {}, { "default": ($$result2) => renderTemplate`${unescapeHTML(renderFileTree(fileTree))}` })}`} </ul> </div> <div class="modal-actions p-4 bg-gray-800 flex justify-end space-x-4 sticky bottom-0"> <button id="cancelTemplateChange" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded transition duration-300 text-sm sm:text-base" aria-label="Cancel template change">Cancel</button> <button id="confirmTemplateChange" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded transition duration-300 text-sm sm:text-base" disabled aria-label="Confirm template change">Confirm</button> </div> </div> </div>  `;
-}, "C:/Users/bradhave/Documents/workspace/hubspot/api/changeTemplate/src/components/TemplateModal.astro", void 0);
+}, "C:/Users/bradhave/Documents/workspace/hubspot/api/hsUtils/src/components/TemplateModal.astro", void 0);
 
 const $$Astro = createAstro();
 const $$DomainModal = createComponent(async ($$result, $$props, $$slots) => {
@@ -86,6 +86,6 @@ Cancel
 </button> <button id="confirmDomainBtn" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
 Confirm
 </button> </div> </div> </div> `;
-}, "C:/Users/bradhave/Documents/workspace/hubspot/api/changeTemplate/src/components/DomainModal.astro", void 0);
+}, "C:/Users/bradhave/Documents/workspace/hubspot/api/hsUtils/src/components/DomainModal.astro", void 0);
 
 export { $$TemplateModal as $, $$DomainModal as a };

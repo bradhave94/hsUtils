@@ -1,10 +1,10 @@
 /* empty css                                      */
 import { c as createComponent, r as renderTemplate, g as defineScriptVars, a as addAttribute, m as maybeRenderHead, e as createAstro, f as renderComponent } from '../chunks/astro/server_QBnrvN_q.mjs';
 import 'kleur/colors';
-import { $ as $$Layout } from '../chunks/Layout_DnTCzner.mjs';
+import { $ as $$Layout } from '../chunks/Layout_D4YqzTMS.mjs';
 import 'clsx';
 /* empty css                                      */
-import { $ as $$TemplateModal, a as $$DomainModal } from '../chunks/DomainModal_DvpENxwL.mjs';
+import { $ as $$TemplateModal, a as $$DomainModal } from '../chunks/DomainModal_BloStABa.mjs';
 import { i as getBlogPosts, j as getBlogInfo, e as getDomains } from '../chunks/api_D5lN87jw.mjs';
 export { renderers } from '../renderers.mjs';
 
@@ -104,13 +104,14 @@ Edit in HubSpot
 Restore Post
 </button>`} </div> </div> </li>`;
   })} </ul> </details> </li>`), defineScriptVars({ blogInfo }));
-}, "C:/Users/bradhave/Documents/workspace/hubspot/api/changeTemplate/src/components/BlogTree.astro", void 0);
+}, "C:/Users/bradhave/Documents/workspace/hubspot/api/hsUtils/src/components/BlogTree.astro", void 0);
 
 var __freeze = Object.freeze;
 var __defProp = Object.defineProperty;
 var __template = (cooked, raw) => __freeze(__defProp(cooked, "raw", { value: __freeze(cooked.slice()) }));
 var _a;
 const $$Astro = createAstro();
+const prerender = false;
 const $$BlogPosts = createComponent(async ($$result, $$props, $$slots) => {
   const Astro2 = $$result.createAstro($$Astro, $$props, $$slots);
   Astro2.self = $$BlogPosts;
@@ -140,15 +141,16 @@ const $$BlogPosts = createComponent(async ($$result, $$props, $$slots) => {
   };
   await getDomains(accessToken);
   return renderTemplate(_a || (_a = __template(["", " <script>(function(){", "\n    document.addEventListener('DOMContentLoaded', () => {\n        async function apiCall(endpoint, data) {\n            const response = await fetch(endpoint, {\n                method: 'POST',\n                headers: { 'Content-Type': 'application/json' },\n                body: JSON.stringify(data),\n            });\n            if (!response.ok) throw new Error('API call failed');\n            return response.json();\n        }\n\n        // Single post template change\n        document.querySelectorAll('.change-template-btn').forEach(btn => {\n            btn.addEventListener('click', async () => {\n                const { pageId, templatePath: currentTemplatePath } = btn.dataset;\n                const newTemplatePath = await window.openTemplateModal(pageId, currentTemplatePath);\n                if (newTemplatePath) {\n                    try {\n                        await apiCall(API_ENDPOINTS.changeTemplate, { pageId, templatePath: newTemplatePath });\n                        alert('Template updated successfully!');\n                        location.reload();\n                    } catch (error) {\n                        console.error('Failed to update template:', error);\n                        alert('Failed to update template. Please try again.');\n                    }\n                }\n            });\n        });\n\n        // Change all templates in a template group\n        document.querySelectorAll('.change-all-templates-btn').forEach(btn => {\n            btn.addEventListener('click', async (e) => {\n                e.stopPropagation();\n                const { templatePath } = btn.dataset;\n                const postIds = Array.from(btn.closest('details').querySelectorAll('.change-template-btn'))\n                    .map(btn => btn.getAttribute('data-page-id'));\n\n                const newTemplatePath = await window.openTemplateModal(postIds, templatePath);\n                if (newTemplatePath) {\n                    try {\n                        await apiCall(API_ENDPOINTS.updateBatch, {\n                            inputs: postIds.map(id => ({ id, templatePath: newTemplatePath }))\n                        });\n                        alert('Templates updated successfully!');\n                        location.reload();\n                    } catch (error) {\n                        console.error('Failed to update templates:', error);\n                        alert('Failed to update templates. Please try again.');\n                    }\n                }\n            });\n        });\n\n        // Restore archived post\n        document.querySelectorAll('.restore-page-btn').forEach(btn => {\n            btn.addEventListener('click', async () => {\n                const { pageId } = btn.dataset;\n                if (pageId) {\n                    try {\n                        const result = await apiCall(API_ENDPOINTS.restoreBlogPost, { pageId });\n                        if (result.success) {\n                            alert('Blog post restored successfully!');\n                            location.reload();\n                        } else {\n                            throw new Error(result.error || 'Failed to restore blog post');\n                        }\n                    } catch (error) {\n                        console.error('Failed to restore blog post:', error);\n                        alert('Failed to restore blog post. Please try again.');\n                    }\n                }\n            });\n        });\n    });\n})();<\/script>"])), renderComponent($$result, "Layout", $$Layout, { "title": "HubSpot Blog Posts" }, { "default": ($$result2) => renderTemplate` ${maybeRenderHead()}<main class="container mx-auto max-w-4xl px-4 py-8"> <h1 class="text-4xl font-bold mb-8 text-blue-200">HubSpot Blog Posts <span class="text-xl text-blue-500">(${posts.length} posts)</span></h1> <p class="text-sm max-w-xl mb-6 text-blue-100">Posts are grouped by blog. Click a template to change all posts in that blog. Click a post to change that post's template.</p> ${error && renderTemplate`<p class="text-red-500 mb-6 p-4 bg-red-100 rounded-lg">${error}</p>`} ${posts.length === 0 ? renderTemplate`<p class="text-gray-400 text-xl">No blog posts found. ${error ? "An error occurred while fetching blog posts." : ""}</p>` : renderTemplate`${renderComponent($$result2, "BlogTree", $$BlogTree, { "posts": posts, "blogInfo": blogInfo })}`} <a href="/" class="inline-block mt-8 bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded transition duration-300">Back to Home</a> </main> ${renderComponent($$result2, "TemplateModal", $$TemplateModal, {})} ${renderComponent($$result2, "DomainModal", $$DomainModal, {})} ` }), defineScriptVars({ API_ENDPOINTS }));
-}, "C:/Users/bradhave/Documents/workspace/hubspot/api/changeTemplate/src/pages/blog-posts.astro", void 0);
+}, "C:/Users/bradhave/Documents/workspace/hubspot/api/hsUtils/src/pages/blog-posts.astro", void 0);
 
-const $$file = "C:/Users/bradhave/Documents/workspace/hubspot/api/changeTemplate/src/pages/blog-posts.astro";
+const $$file = "C:/Users/bradhave/Documents/workspace/hubspot/api/hsUtils/src/pages/blog-posts.astro";
 const $$url = "/blog-posts";
 
 const _page = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
     default: $$BlogPosts,
     file: $$file,
+    prerender,
     url: $$url
 }, Symbol.toStringTag, { value: 'Module' }));
 

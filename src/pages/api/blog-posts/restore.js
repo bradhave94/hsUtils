@@ -1,3 +1,4 @@
+export const prerender = false;
 import { restorePage } from '../../../lib/hubspot/api';
 
 export const POST = async ({ request, cookies }) => {

@@ -1,3 +1,4 @@
+export const prerender = false;
 export const POST = async ({ request }) => {
     const { pageId, templatePath } = await request.json();
     const accessToken = getAccessTokenFromRequest(request);
@@ -12,4 +13,8 @@ export const POST = async ({ request }) => {
     } catch (error) {
         return handleApiError(error);
     }
+};
+
+export const GET = async ({ request }) => {
+    return new Response(JSON.stringify({ message: 'Hello, world!' }), { status: 200 });
 };

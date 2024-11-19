@@ -1,3 +1,4 @@
+export const prerender = false;
 import { getAccessTokenFromRequest, handleApiError } from '../../../lib/hubspot/api';
 
 export const POST = async ({ request }) => {
@@ -30,4 +31,8 @@ export const POST = async ({ request }) => {
     } catch (error) {
         return handleApiError(error);
     }
+};
+
+export const GET = async ({ request }) => {
+    return new Response(JSON.stringify({ message: 'Hello, world!' }), { status: 200 });
 };

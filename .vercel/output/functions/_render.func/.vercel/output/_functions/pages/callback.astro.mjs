@@ -1,12 +1,13 @@
 /* empty css                                      */
 import { c as createComponent, r as renderTemplate, f as renderComponent, e as createAstro, m as maybeRenderHead } from '../chunks/astro/server_QBnrvN_q.mjs';
 import 'kleur/colors';
-import { $ as $$Layout } from '../chunks/Layout_DnTCzner.mjs';
+import { $ as $$Layout } from '../chunks/Layout_D4YqzTMS.mjs';
 import { c as getAccessTokenFromCode } from '../chunks/api_D5lN87jw.mjs';
 /* empty css                                    */
 export { renderers } from '../renderers.mjs';
 
 const $$Astro = createAstro();
+const prerender = false;
 const $$Callback = createComponent(async ($$result, $$props, $$slots) => {
   const Astro2 = $$result.createAstro($$Astro, $$props, $$slots);
   Astro2.self = $$Callback;
@@ -42,15 +43,16 @@ const $$Callback = createComponent(async ($$result, $$props, $$slots) => {
     }
   }
   return renderTemplate`${renderComponent($$result, "Layout", $$Layout, { "title": "HubSpot OAuth Callback", "data-astro-cid-62g22v6u": true }, { "default": ($$result2) => renderTemplate` ${maybeRenderHead()}<main data-astro-cid-62g22v6u> <h1 data-astro-cid-62g22v6u>HubSpot OAuth Callback</h1> <p data-astro-cid-62g22v6u>${message}</p> <a href="/" class="button" data-astro-cid-62g22v6u>Back to Home</a> </main> ` })} `;
-}, "C:/Users/bradhave/Documents/workspace/hubspot/api/changeTemplate/src/pages/callback.astro", void 0);
+}, "C:/Users/bradhave/Documents/workspace/hubspot/api/hsUtils/src/pages/callback.astro", void 0);
 
-const $$file = "C:/Users/bradhave/Documents/workspace/hubspot/api/changeTemplate/src/pages/callback.astro";
+const $$file = "C:/Users/bradhave/Documents/workspace/hubspot/api/hsUtils/src/pages/callback.astro";
 const $$url = "/callback";
 
 const _page = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
     default: $$Callback,
     file: $$file,
+    prerender,
     url: $$url
 }, Symbol.toStringTag, { value: 'Module' }));
 
