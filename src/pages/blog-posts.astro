@@ -22,9 +22,10 @@ if (!accessToken || !portalId) {
 
 try {
     [posts, blogInfo] = await Promise.all([
-        getBlogPosts(accessToken),
+        getBlogPosts(accessToken, Astro.url.searchParams.has('archived')),
         getBlogInfo(accessToken)
     ]);
+    console.log('posts', posts.length);
 } catch (err) {
     console.error('Error fetching blog data:', err);
     error = `Failed to fetch blog data: ${err instanceof Error ? err.message : 'Unknown error'}`;

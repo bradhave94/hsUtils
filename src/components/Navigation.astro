@@ -1,0 +1,44 @@
+---
+import { getPortalIdFromCookies, getAuthUrl } from '../lib/hubspot/auth';
+const portalId = getPortalIdFromCookies(Astro.cookies);
+const authUrl = getAuthUrl();
+
+---
+
+<nav class="global-nav">
+    <div class="nav-content">
+        <div class="nav-links ">
+            <a href="/" class="nav-link text-white hover:text-orange-500 transition-colors duration-300">Home</a>
+            <a href="/pages" class="nav-link text-white hover:text-orange-500 transition-colors duration-300">Pages</a>
+            <a href="/blog-posts" class="nav-link text-white hover:text-orange-500 transition-colors duration-300">Blogs</a>
+        </div>
+        {portalId &&
+            <a href={authUrl} title="Change Portal" class="portal-info text-white/50 text-sm hover:text-orange-500 transition-colors duration-300">
+                Portal ID: {portalId}
+            </a>
+        }
+    </div>
+</nav>
+
+<style>
+    .global-nav {
+        background-color: #2d3748;
+        padding: 1rem;
+    }
+
+    .nav-content {
+        max-width: 1200px;
+        margin: 0 auto;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .nav-links {
+        display: flex;
+        gap: 2rem;
+    }
+
+
+
+</style>

@@ -1,67 +1,11 @@
-const CLIENT_ID = import.meta.env.HUBSPOT_CLIENT_ID;
-const CLIENT_SECRET = import.meta.env.HUBSPOT_CLIENT_SECRET;
-const REDIRECT_URI = import.meta.env.REDIRECT_URI;
-const SCOPES = 'content';
-
-const AUTH_URL = 'https://app.hubspot.com/oauth/authorize';
-const TOKEN_URL = 'https://api.hubapi.com/oauth/v1/token';
-const SITE_PAGES_URL = 'https://api.hubapi.com/cms/v3/pages/site-pages?limit=100&archived=true';
+const SITE_PAGES_URL = 'https://api.hubapi.com/cms/v3/pages/site-pages?limit=100';
+const BLOG_POSTS_URL = 'https://api.hubapi.com/cms/v3/blogs/posts?limit=100';
 const TEMPLATES_URL = 'https://api.hubapi.com/content/api/v2/templates?is_available_for_new_content=true&limit=1000';
 const DOMAIN_URL = 'https://api.hubapi.com/cms/v3/domains/';
 
-export function getAuthUrl() {
-    return `${AUTH_URL}?client_id=${CLIENT_ID}&scope=${SCOPES}&redirect_uri=${REDIRECT_URI}`;
-}
-
-export async function getAccessTokenFromCode(code) {
-    const tokenResponse = await fetch(TOKEN_URL, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-            grant_type: 'authorization_code',
-            client_id: CLIENT_ID,
-            client_secret: CLIENT_SECRET,
-            redirect_uri: REDIRECT_URI,
-            code: code
-        })
-    });
-    const tokenData = await tokenResponse.json();
-    if (!tokenResponse.ok) {
-        throw new Error(`Failed to get access token: ${tokenData.error}`);
-    }
-
-    const accessToken = tokenData.access_token;
-
-    const portalResponse = await fetch('https://api.hubapi.com/oauth/v1/access-tokens/' + accessToken, {
-        headers: {
-            Authorization: `Bearer ${accessToken}`
-        }
-    });
-    const portalData = await portalResponse.json();
-    if (!portalResponse.ok) {
-        throw new Error(`Failed to get portal ID: ${portalData.error}`);
-    }
-
-    const portalId = portalData.hub_id.toString();
-
-    console.log('Access token:', accessToken);
-    console.log('Portal ID:', portalId);
-
-    return { accessToken, portalId };
-}
-
-export function getAccessTokenFromRequest(request) {
-    return request.headers.get('Cookie')
-        ?.split(';')
-        .find(c => c.trim().startsWith('hubspot_access_token='))
-        ?.split('=')[1] || null;
-}
-
-export async function getSitePages(accessToken) {
+export async function getSitePages(accessToken, archived = false) {
     let allPages = [];
-    let nextPageUrl = SITE_PAGES_URL;
+    let nextPageUrl = SITE_PAGES_URL + (archived ? "&archived=true" : "");
 
     try {
         while (nextPageUrl) {
@@ -290,34 +234,54 @@ export async function updatePage(pageId, updates, accessToken) {
     return response.json();
 }
 
-export async function getBlogPosts(accessToken) {
-    const response = await fetch('https://api.hubapi.com/cms/v3/blogs/posts?archived=true', {
-        headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
+export async function getBlogPosts(accessToken, archived = false) {
+    let allPosts = [];
+    let nextPageUrl = BLOG_POSTS_URL + (archived ? "&archived=true" : "");
+
+    try {
+        while (nextPageUrl) {
+            const response = await fetch(nextPageUrl, {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch blog posts: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+
+            if (!data.results || !Array.isArray(data.results)) {
+                throw new Error('Unexpected API response structure');
+            }
+
+            const posts = data.results.map(post => ({
+                id: post.id,
+                name: post.name,
+                state: post.state,
+                templatePath: post.templatePath,
+                archived: post.archived,
+                archivedAt: post.archivedAt,
+                url: post.url,
+                slug: post.slug,
+                publishDate: post.publishDate,
+                createdAt: post.created,
+                updatedAt: post.updated,
+                created: post.created,
+                updated: post.updated
+            }));
+
+            allPosts = allPosts.concat(posts);
+            nextPageUrl = data.paging?.next?.link || null;
         }
-    });
 
-    if (!response.ok) {
-        throw new Error(`Failed to fetch blog posts: ${response.statusText}`);
+        return allPosts;
+    } catch (error) {
+        console.error('Error fetching blog posts:', error);
+        throw new Error(`Failed to fetch blog posts: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-
-    const data = await response.json();
-    return data.results.map(post => ({
-        id: post.id,
-        name: post.name,
-        state: post.state,
-        templatePath: post.templatePath,
-        archived: post.archived,
-        archivedAt: post.archivedAt,
-        url: post.url,
-        slug: post.slug,
-        publishDate: post.publishDate,
-        createdAt: post.created,
-        updatedAt: post.updated,
-        created: post.created,
-        updated: post.updated
-    }));
 }
 
 export async function getBlogInfo(accessToken) {

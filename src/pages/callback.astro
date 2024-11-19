@@ -1,9 +1,10 @@
 ---
 export const prerender = false;
 import Layout from '../layouts/Layout.astro';
-import { getAccessTokenFromCode } from '../lib/hubspot/api';
+import { getAccessTokenFromCode, setAuthCookies } from '../lib/hubspot/auth';
 
 let message = '';
+let portalId = '';
 
 if (Astro.request.method === 'GET') {
     const url = new URL(Astro.request.url);
@@ -11,25 +12,20 @@ if (Astro.request.method === 'GET') {
 
     if (code) {
         try {
-            const { accessToken, portalId } = await getAccessTokenFromCode(code);
-            // Store the access token and portal ID in cookies
-            Astro.cookies.set('hubspot_access_token', accessToken, {
-                path: '/',
-                httpOnly: true,
-                secure: true,
-                sameSite: 'strict',
-                maxAge: 60 * 60 * 2 // 2 hours
+            const { accessToken, refreshToken, portalId: hubspotPortalId, expiresAt } = await getAccessTokenFromCode(code);
+            portalId = hubspotPortalId;
+
+            // Use the new cookie setter
+            setAuthCookies(Astro.cookies, {
+                accessToken,
+                refreshToken,
+                expiresAt,
+                portalId
             });
-            Astro.cookies.set('hubspot_portal_id', portalId, {
-                path: '/',
-                httpOnly: true,
-                secure: true,
-                sameSite: 'strict',
-                maxAge: 60 * 60 * 2 // 2 hours
-            });
-            return Astro.redirect('/');
+
         } catch (error) {
-            message = `Authentication failed: ${error.message}`;
+            console.error('Auth error:', error);
+            return Astro.redirect('/?error=auth_failed');
         }
     } else {
         message = 'No authorization code received.';
@@ -37,31 +33,10 @@ if (Astro.request.method === 'GET') {
 }
 ---
 
-<Layout title="HubSpot OAuth Callback">
-	<main>
-		<h1>HubSpot OAuth Callback</h1>
-		<p>{message}</p>
-		<a href="/" class="button">Back to Home</a>
+<Layout title="HubSpot OAuth Callback" portalId={portalId}>
+	<main class="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white ">
+		<h1 class="text-4xl font-bold  text-orange-500">HubSpot OAuth Callback</h1>
+		<p class="text-lg mt-4">{message}</p>
+		<a href="/" class="button mt-6 text-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300">Back to Home</a>
 	</main>
 </Layout>
-
-<style>
-	main {
-		margin: auto;
-		padding: 1rem;
-		width: 800px;
-		max-width: calc(100% - 2rem);
-		color: white;
-		font-size: 20px;
-		line-height: 1.6;
-	}
-	.button {
-		display: inline-block;
-		padding: 10px 20px;
-		background-color: #ff7a59;
-		color: white;
-		text-decoration: none;
-		border-radius: 5px;
-		font-weight: bold;
-	}
-</style>

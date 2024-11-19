@@ -1,3 +1,6 @@
+import { getAccessTokenFromRequest } from '../../../lib/hubspot/auth';
+import { handleApiError } from '../../../lib/hubspot/api';
+
 export const prerender = false;
 export const POST = async ({ request }) => {
     const { pageId, templatePath } = await request.json();

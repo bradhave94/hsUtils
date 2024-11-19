@@ -78,6 +78,7 @@ function formatDate(dateString) {
 const pageTree = buildPageTree(pages);
 const portalId = Astro.cookies.get('hubspot_portal_id')?.value;
 const groupPages = new URLSearchParams(Astro.url.search).get('group') !== 'false';
+const showArchived = Astro.url.searchParams.has('archived');
 ---
 
 <div class="page-tree-container">
@@ -86,8 +87,10 @@ const groupPages = new URLSearchParams(Astro.url.search).get('group') !== 'false
         <button id="changeSelectedDomainsBtn" class="change-selected-btn bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>Change Selected Domains</button>
         <button id="changeSelectedSlugsBtn" class="change-selected-btn bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-4 rounded transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>Change Selected Slugs</button>
     </div>
+
     {(groupPages ? ['published', 'draft', 'archived'] : ['all', 'archived']).map(section => (
-        <div>
+        (section !== 'archived' || showArchived) && (
+            <div>
             <h2 class="text-3xl font-bold mb-6 mt-8 capitalize text-blue-200">
                 {section === 'all' ? 'All Pages' : `${section} Pages`}
             </h2>
@@ -155,7 +158,8 @@ const groupPages = new URLSearchParams(Astro.url.search).get('group') !== 'false
                     </li>
                 ))}
             </ul>
-        </div>
+            </div>
+        )
     ))}
 </div>
 
@@ -545,19 +549,24 @@ const groupPages = new URLSearchParams(Astro.url.search).get('group') !== 'false
 
                 try {
                     const regex = new RegExp(pattern);
-                    const results = await Promise.allSettled(
-                        selectedPages.map(async (page) => {
-                            const currentPath = new URL(page.currentUrl).pathname;
-                            let newSlug = currentPath.replace(regex, replacement);
+                    const pagesToUpdate = window.selectedPages.filter(page => {
+                        const currentPath = new URL(page.currentUrl).pathname;
+                        // Only include pages where the regex matches
+                        return regex.test(currentPath);
+                    });
 
-                            // Clean up the slug
-                            newSlug = newSlug
-                                // Remove any double slashes
-                                .replace(/\/+/g, '/')
-                                // Remove trailing slash if present
-                                .replace(/\/$/, '')
-                                // Ensure it starts with a slash
-                                .replace(/^\/?/, '/');
+                    if (pagesToUpdate.length === 0) {
+                        alert('No matches found for the given pattern. No changes will be made.');
+                        return;
+                    }
+
+                    const results = await Promise.allSettled(
+                        pagesToUpdate.map(async (page) => {
+                            const currentPath = new URL(page.currentUrl).pathname;
+                            let newSlug = currentPath.replace(regex, replacement)
+                                .replace(/\/+/g, '/') // Remove multiple slashes
+                                .replace(/\/$/, '')   // Remove trailing slash
+                                .replace(/^(?!\/)/, '/'); // Ensure starts with slash
 
                             const response = await fetch('/api/pages/update-slug', {
                                 method: 'POST',
@@ -566,7 +575,7 @@ const groupPages = new URLSearchParams(Astro.url.search).get('group') !== 'false
                                 },
                                 body: JSON.stringify({
                                     pageId: page.pageId,
-                                    newSlug: newSlug
+                                    newSlug
                                 }),
                             });
 
@@ -581,13 +590,13 @@ const groupPages = new URLSearchParams(Astro.url.search).get('group') !== 'false
 
                     const successful = results.filter(result => result.status === 'fulfilled').length;
                     const failed = results.filter(result => result.status === 'rejected').length;
+                    const skipped = window.selectedPages.length - pagesToUpdate.length;
 
-                    if (failed === 0) {
-                        alert(`Successfully updated slugs for all ${successful} pages!`);
-                    } else {
-                        alert(`Updated slugs for ${successful} pages. Failed to update ${failed} pages.`);
-                    }
+                    let message = `Updated slugs for ${successful} pages.`;
+                    if (failed > 0) message += ` Failed to update ${failed} pages.`;
+                    if (skipped > 0) message += ` Skipped ${skipped} pages (no pattern match).`;
 
+                    alert(message);
                     modal.close();
                     location.reload();
                 } catch (error) {
@@ -653,13 +662,21 @@ const groupPages = new URLSearchParams(Astro.url.search).get('group') !== 'false
 
             try {
                 const regex = new RegExp(pattern);
-                const results = await Promise.allSettled(
-                    window.selectedPages.map(async (page) => {
-                        const currentPath = new URL(page.currentUrl).pathname;
-                        let newSlug = currentPath.replace(regex, replacement);
+                const pagesToUpdate = window.selectedPages.filter(page => {
+                    const currentPath = new URL(page.currentUrl).pathname;
+                    // Only include pages where the regex matches
+                    return regex.test(currentPath);
+                });
 
-                        // Clean up the slug
-                        newSlug = newSlug
+                if (pagesToUpdate.length === 0) {
+                    alert('No matches found for the given pattern. No changes will be made.');
+                    return;
+                }
+
+                const results = await Promise.allSettled(
+                    pagesToUpdate.map(async (page) => {
+                        const currentPath = new URL(page.currentUrl).pathname;
+                        let newSlug = currentPath.replace(regex, replacement)
                             .replace(/\/+/g, '/') // Remove multiple slashes
                             .replace(/\/$/, '')   // Remove trailing slash
                             .replace(/^(?!\/)/, '/'); // Ensure starts with slash
@@ -671,7 +688,7 @@ const groupPages = new URLSearchParams(Astro.url.search).get('group') !== 'false
                             },
                             body: JSON.stringify({
                                 pageId: page.pageId,
-                                newSlug: newSlug
+                                newSlug
                             }),
                         });
 
@@ -686,13 +703,13 @@ const groupPages = new URLSearchParams(Astro.url.search).get('group') !== 'false
 
                 const successful = results.filter(result => result.status === 'fulfilled').length;
                 const failed = results.filter(result => result.status === 'rejected').length;
+                const skipped = window.selectedPages.length - pagesToUpdate.length;
 
-                if (failed === 0) {
-                    alert(`Successfully updated slugs for all ${successful} pages!`);
-                } else {
-                    alert(`Updated slugs for ${successful} pages. Failed to update ${failed} pages.`);
-                }
+                let message = `Updated slugs for ${successful} pages.`;
+                if (failed > 0) message += ` Failed to update ${failed} pages.`;
+                if (skipped > 0) message += ` Skipped ${skipped} pages (no pattern match).`;
 
+                alert(message);
                 modal.close();
                 location.reload();
             } catch (error) {

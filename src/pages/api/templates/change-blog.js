@@ -1,5 +1,6 @@
 export const prerender = false;
-import { getAccessTokenFromRequest, handleApiError } from '../../../lib/hubspot/api';
+import { handleApiError } from '../../../lib/hubspot/api';
+import { getAccessTokenFromRequest } from '../../../lib/hubspot/auth';
 
 export const POST = async ({ request }) => {
     try {

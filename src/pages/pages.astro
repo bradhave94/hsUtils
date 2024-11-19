@@ -20,7 +20,7 @@ if (!accessToken || !portalId) {
 }
 
 try {
-    pages = await getSitePages(accessToken);
+    pages = await getSitePages(accessToken, Astro.url.searchParams.has('archived'));
     // Improved sorting function
     pages.sort((a, b) => {
         const statusOrder = { PUBLISHED: 0, DRAFT: 1, ARCHIVED: 2 };

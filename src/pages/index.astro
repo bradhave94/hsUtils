@@ -1,33 +1,50 @@
 ---
 export const prerender = false;
 import Layout from '../layouts/Layout.astro';
-import { getAuthUrl } from '../lib/hubspot/api';
+import { getAuthUrl, checkAuth, refreshAccessToken } from '../lib/hubspot/auth';
 
 const authUrl = getAuthUrl();
-const accessTokenCookie = Astro.cookies.get('hubspot_access_token');
-const accessToken = accessTokenCookie ? accessTokenCookie.value : null;
+let {
+    isAuthenticated,
+    accessToken,
+    refreshToken,
+    expiresAt,
+    portalId,
+    needsRefresh
+} = checkAuth(Astro.cookies);
 
-const portalIdCookie = Astro.cookies.get('hubspot_portal_id');
-const portalId = portalIdCookie ? portalIdCookie.value : null;
-let isAuthenticated = true;
-
-if (!accessToken || !portalId) {
-	isAuthenticated = false;
+// Optional: Handle token refresh if needed
+if (isAuthenticated && needsRefresh && refreshToken) {
+    try {
+        const newTokenData = await refreshAccessToken(refreshToken);
+        // You might want to set new cookies here or handle this in an API endpoint
+        console.log('Token refreshed');
+    } catch (error) {
+        console.error('Failed to refresh token:', error);
+        // Optionally clear cookies if refresh fails
+        isAuthenticated = false;
+    }
 }
-
 ---
-
 <Layout title="HubSpot OAuth">
 	<main class="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white p-4">
-		<h1 class="text-4xl font-bold mb-6 text-orange-500">HubSpot Utils</h1>
+		<h1 class="text-4xl font-bold  text-orange-500">HubSpot Utils</h1>
+		{
+			portalId && <p>Portal ID: {portalId}</p>
+		}
 		<div class="space-y-4">
-			<a href={authUrl} class="block w-full text-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300">
+			<a href={authUrl} class="mt-6 block w-full text-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300">
 				{isAuthenticated ? 'Change Portal' : 'Authenticate with HubSpot'}
 			</a>
 			{isAuthenticated && (
-				<a href="/pages" class="block w-full text-center bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300">
-					View Pages
-				</a>
+				<>
+					<a href="/pages" class="block w-full text-center bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300">
+						View Pages
+					</a>
+					<a href="/blog-posts" class="block w-full text-center bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300">
+						View Blog Posts
+					</a>
+				</>
 			)}
 		</div>
 	</main>

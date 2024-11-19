@@ -110,7 +110,7 @@ groupedPosts['No Blog'] = noBlogPosts;
                         </div>
                     </summary>
                     <ul class="mt-4 space-y-4">
-                        {posts.map(post => {
+                        {(posts as any[]).map(post => {
                             const status = getStatusLabel(post);
                             return (
                                 <li class="post bg-gray-700 rounded-lg p-4">
@@ -615,18 +615,30 @@ groupedPosts['No Blog'] = noBlogPosts;
 
                 try {
                     const regex = new RegExp(pattern);
+                    const pagesToUpdate = window.selectedPages.filter(page => {
+                        const blogBasePath = blogInfo.find(b => page.currentUrl.includes(b.url))?.url;
+                        const currentSlug = blogBasePath ?
+                            page.currentUrl.substring(page.currentUrl.indexOf(blogBasePath) + blogBasePath.length).replace(/^\/+/, '') :
+                            page.currentUrl.split('/').pop() || '';
+
+                        // Only include pages where the regex matches
+                        return regex.test(currentSlug);
+                    });
+
+                    if (pagesToUpdate.length === 0) {
+                        alert('No matches found for the given pattern. No changes will be made.');
+                        return;
+                    }
+
                     const results = await Promise.allSettled(
-                        window.selectedPages.map(async (page) => {
-                            // Get the blog base URL
+                        pagesToUpdate.map(async (page) => {
                             const blogBasePath = blogInfo.find(b => page.currentUrl.includes(b.url))?.url;
-                            // Extract everything after the blog base URL
                             const currentSlug = blogBasePath ?
                                 page.currentUrl.substring(page.currentUrl.indexOf(blogBasePath) + blogBasePath.length).replace(/^\/+/, '') :
                                 page.currentUrl.split('/').pop() || '';
 
-                            // Apply the pattern to the full path
                             let newSlug = currentSlug.replace(regex, replacement)
-                                .replace(/^\/|\/$/g, ''); // Only remove leading/trailing slashes, preserve internal ones
+                                .replace(/^\/|\/$/g, '');
 
                             const response = await fetch('/api/blog-posts/update-slug', {
                                 method: 'POST',
@@ -650,13 +662,13 @@ groupedPosts['No Blog'] = noBlogPosts;
 
                     const successful = results.filter(result => result.status === 'fulfilled').length;
                     const failed = results.filter(result => result.status === 'rejected').length;
+                    const skipped = window.selectedPages.length - pagesToUpdate.length;
 
-                    if (failed === 0) {
-                        alert(`Successfully updated slugs for all ${successful} posts!`);
-                    } else {
-                        alert(`Updated slugs for ${successful} posts. Failed to update ${failed} posts.`);
-                    }
+                    let message = `Updated slugs for ${successful} posts.`;
+                    if (failed > 0) message += ` Failed to update ${failed} posts.`;
+                    if (skipped > 0) message += ` Skipped ${skipped} posts (no pattern match).`;
 
+                    alert(message);
                     modal.close();
                     location.reload();
                 } catch (error) {
