@@ -23,6 +23,8 @@ if (Astro.request.method === 'GET') {
                 portalId
             });
 
+            message = `Successfully authenticated Portal ID: ${portalId}`;
+
         } catch (error) {
             console.error('Auth error:', error);
             return Astro.redirect('/?error=auth_failed');
