@@ -22,7 +22,7 @@ const isLoggedIn = checkPassword(Astro.request);
         <meta name="generator" content={Astro.generator} />
         <title>{title}</title>
     </head>
-    <body>
+    <body class="bg-gray-900 text-white">
         {isLoggedIn ||!checkForPassword ? (
             <>
                 <Navigation />
