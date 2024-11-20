@@ -1,6 +1,6 @@
 ---
-import { getTemplates } from '../lib/hubspot/api';
-import type { HubSpotTemplate } from '../types/HubSpotTemplate';
+import type { HubSpotTemplate } from '../types/hubspot';
+import { getTemplates } from '../lib/api/hubspot';
 
 let templates: HubSpotTemplate[] | null = null;
 let error = '';
@@ -14,12 +14,12 @@ if (accessToken) {
         templates.sort((a, b) => a.path.localeCompare(b.path));
     } catch (err) {
         console.error('Error fetching templates:', err);
-        error = `Failed to fetch templates: ${err}`;
+        error = err instanceof Error ? err.message : 'Failed to fetch templates';
         templates = null;
     }
 }
 
-function buildFileTree(templates: HubSpotTemplate[]): any {
+function buildFileTree(templates: HubSpotTemplate[]): Record<string, any> {
     const tree = {};
     templates.forEach(template => {
         const parts = template.path.split('/');
@@ -27,10 +27,8 @@ function buildFileTree(templates: HubSpotTemplate[]): any {
         parts.forEach((part, index) => {
             if (!currentLevel[part]) {
                 if (index === parts.length - 1) {
-                    // This is the leaf node (actual template)
                     currentLevel[part] = template;
                 } else {
-                    // This is an intermediate directory
                     currentLevel[part] = {};
                 }
             }
@@ -40,11 +38,10 @@ function buildFileTree(templates: HubSpotTemplate[]): any {
     return tree;
 }
 
-function renderFileTree(tree: any): string {
+function renderFileTree(tree: Record<string, any>): string {
     let html = '';
     for (const [name, subtree] of Object.entries(tree)) {
         if (subtree.path) {
-            // This is a template (leaf node)
             html += `
             <li class="file bg-gray-600 rounded-lg p-4 cursor-pointer" data-template-path="${subtree.path}">
                 <div class="flex items-center justify-between">
@@ -57,7 +54,6 @@ function renderFileTree(tree: any): string {
                 </div>
             </li>`;
         } else {
-            // This is a folder
             html += `
             <li class="folder-group">
                 <details class="bg-gray-800 rounded-lg p-4 open">

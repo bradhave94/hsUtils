@@ -1,7 +1,7 @@
 ---
 export const prerender = false;
 import Layout from '../layouts/Layout.astro';
-import { getAccessTokenFromCode, setAuthCookies } from '../lib/hubspot/auth';
+import { getAccessTokenFromCode, setAuthCookies } from '../lib/auth';
 
 let message = '';
 let portalId = '';
@@ -15,7 +15,6 @@ if (Astro.request.method === 'GET') {
             const { accessToken, refreshToken, portalId: hubspotPortalId, expiresAt } = await getAccessTokenFromCode(code);
             portalId = hubspotPortalId;
 
-            // Use the new cookie setter
             setAuthCookies(Astro.cookies, {
                 accessToken,
                 refreshToken,
@@ -24,7 +23,6 @@ if (Astro.request.method === 'GET') {
             });
 
             message = `Successfully authenticated Portal ID: ${portalId}`;
-
         } catch (error) {
             console.error('Auth error:', error);
             return Astro.redirect('/?error=auth_failed');
@@ -36,9 +34,9 @@ if (Astro.request.method === 'GET') {
 ---
 
 <Layout title="HubSpot OAuth Callback" checkForPassword={false}>
-	<main class="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white ">
-		<h1 class="text-4xl font-bold  text-orange-500">HubSpot OAuth Callback</h1>
-		<p class="text-lg mt-4">{message}</p>
-		<a href="/" class="button mt-6 text-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300">Back to Home</a>
-	</main>
+    <main class="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white">
+        <h1 class="text-4xl font-bold text-orange-500">HubSpot OAuth Callback</h1>
+        <p class="text-lg mt-4">{message}</p>
+        <a href="/" class="mt-6 text-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300">Back to Home</a>
+    </main>
 </Layout>

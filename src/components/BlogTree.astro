@@ -1,8 +1,19 @@
 ---
+import type { HubSpotBlogPost } from '../types/hubspot';
+import { formatDate } from '../lib/utils/date';
+
+interface Props {
+    posts: HubSpotBlogPost[];
+    blogInfo: Array<{
+        url: string;
+        template_path: string;
+    }>;
+}
+
 const { posts, blogInfo } = Astro.props;
 const portalId = Astro.cookies.get('hubspot_portal_id')?.value;
 
-function getStatusLabel(post) {
+function getStatusLabel(post: HubSpotBlogPost): string {
     if (post.archivedAt !== 0) return 'Archived';
     switch (post.state || 'DRAFT') {
         case 'PUBLISHED': return 'Published';
@@ -13,7 +24,7 @@ function getStatusLabel(post) {
     }
 }
 
-function getStatusClass(status) {
+function getStatusClass(status: string): string {
     switch (status.toLowerCase()) {
         case 'published': return 'text-green-500';
         case 'draft': return 'text-yellow-500';
@@ -23,21 +34,14 @@ function getStatusClass(status) {
     }
 }
 
-function formatDate(dateString) {
-    if (!dateString || dateString === "1970-01-01T00:00:00Z" || dateString == 0) {
-        return 'N/A';
-    }
-    return new Date(dateString).toLocaleString();
-}
-
 // Group posts by blog
-const groupedPosts = blogInfo.reduce((acc, blog) => {
+const groupedPosts = blogInfo.reduce<Record<string, HubSpotBlogPost[]>>((acc, blog) => {
     // Get posts for this blog
     const blogPosts = posts.filter(post => post.url?.includes(blog.url));
 
     // Sort posts: Published first, then Draft, then Archived
     blogPosts.sort((a, b) => {
-        const getStatusOrder = (post) => {
+        const getStatusOrder = (post: HubSpotBlogPost) => {
             if (post.archivedAt != 0) return 2;  // Archived last
             if (post.state === 'DRAFT') return 1; // Draft second
             return 0;  // Published first
@@ -66,7 +70,7 @@ const noBlogPosts = posts.filter(post =>
 
 // Sort "No Blog" posts the same way
 noBlogPosts.sort((a, b) => {
-    const getStatusOrder = (post) => {
+    const getStatusOrder = (post: HubSpotBlogPost) => {
         if (post.archivedAt != 0) return 2;
         if (post.state === 'DRAFT') return 1;
         return 0;
@@ -90,10 +94,10 @@ groupedPosts['No Blog'] = noBlogPosts;
         <button id="changeSelectedBtn" class="change-selected-btn bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
             Change Selected Template
         </button>
-        <button id="changeSelectedDomainsBtn" class="change-selected-btn bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+        <button id="changeSelectedDomainsBtn" class="changeSelectedDomainsBtn bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
             Change Selected Domains
         </button>
-        <button id="changeSelectedSlugsBtn" class="change-selected-btn bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-4 rounded transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+        <button id="changeSelectedSlugsBtn" class="changeSelectedSlugsBtn bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-4 rounded transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
             Change Selected Slugs
         </button>
     </div>

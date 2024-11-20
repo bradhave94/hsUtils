@@ -1,7 +1,14 @@
 ---
+import type { HubSpotPage } from '../types/hubspot';
+import { formatDate } from '../lib/utils/date';
+
+interface Props {
+    pages: HubSpotPage[];
+}
+
 const { pages } = Astro.props;
 
-function buildPageTree(pages) {
+function buildPageTree(pages: HubSpotPage[]) {
     const searchParams = new URLSearchParams(Astro.url.search);
     const groupPages = searchParams.get('group') !== 'false';
 
@@ -47,32 +54,25 @@ function buildPageTree(pages) {
     return tree;
 }
 
-function getStatusLabel(page) {
+function getStatusLabel(page: HubSpotPage): string {
     if (page.archivedAt && !page.archivedAt.includes('1970')) return 'Archived';
     switch (page.state) {
         case 'PUBLISHED': return 'Published';
         case 'DRAFT': return 'Draft';
         case 'SCHEDULED': return 'Scheduled';
         case 'PUBLISHED_OR_SCHEDULED': return 'Published';
-        default: return page.state;
+        default: return page.state || 'Draft';
     }
 }
 
-function getStatusClass(status) {
+function getStatusClass(status: string): string {
     switch (status.toLowerCase()) {
         case 'published': return 'text-green-500';
         case 'draft': return 'text-yellow-500';
         case 'archived': return 'text-red-500';
         case 'scheduled': return 'text-blue-500';
-        default: return 'text-red-500';
+        default: return 'text-gray-500';
     }
-}
-
-function formatDate(dateString) {
-    if (!dateString || dateString === "1970-01-01T00:00:00Z") {
-        return 'N/A';
-    }
-    return new Date(dateString).toLocaleString();
 }
 
 const pageTree = buildPageTree(pages);
@@ -83,676 +83,185 @@ const showArchived = Astro.url.searchParams.has('archived');
 
 <div class="page-tree-container">
     <div class="flex space-x-4 mb-4">
-        <button id="changeSelectedBtn" class="change-selected-btn bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>Change Selected Template</button>
-        <button id="changeSelectedDomainsBtn" class="change-selected-btn bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>Change Selected Domains</button>
-        <button id="changeSelectedSlugsBtn" class="change-selected-btn bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-4 rounded transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>Change Selected Slugs</button>
+        <button id="changeSelectedBtn" class="change-selected-btn bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+            Change Selected Template
+        </button>
+        <button id="changeSelectedDomainsBtn" class="changeSelectedDomainsBtn bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+            Change Selected Domains
+        </button>
+        <button id="changeSelectedSlugsBtn" class="changeSelectedSlugsBtn bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-4 rounded transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+            Change Selected Slugs
+        </button>
     </div>
 
     {(groupPages ? ['published', 'draft', 'archived'] : ['all', 'archived']).map(section => (
         (section !== 'archived' || showArchived) && (
             <div>
-            <h2 class="text-3xl font-bold mb-6 mt-8 capitalize text-blue-200">
-                {section === 'all' ? 'All Pages' : `${section} Pages`}
-            </h2>
-            <ul class="space-y-3">
-                {Object.entries(pageTree[section]).map(([folder, templates]) => (
-                    <li class="folder-group">
-                        <details class="bg-gray-800 rounded-lg p-4 open">
-                            <summary class="flex items-center cursor-pointer">
-                                <span class="mr-2 text-xl">📁</span>
-                                <span class="text-xl font-semibold text-white">{folder}</span>
-                            </summary>
-                            <ul class="mt-4 space-y-4">
-                                {Object.entries(templates).map(([templatePath, pages]) => (
-                                    <li class="template-group">
-                                        <details class="bg-gray-700 rounded-lg p-4 open">
-                                            <summary class="flex items-center justify-between cursor-pointer">
-                                                <div class="flex items-center">
-                                                    <input type="checkbox" class="template-checkbox custom-checkbox mr-2" data-template-path={`${folder}/${templatePath}`} />
-                                                    <span class="text-lg font-semibold text-white">{templatePath}</span>
-                                                </div>
-                                            </summary>
-                                            <ul class="mt-4 space-y-4">
-                                                {pages.map(page => {
-                                                    const status = getStatusLabel(page);
-                                                    return (
-                                                        <li class="page bg-gray-600 rounded-lg p-4">
-                                                            <div class="flex items-center justify-between">
-                                                                <div class="flex-grow">
-                                                                    <div class="flex items-center">
-                                                                        <label class="flex items-center cursor-pointer">
-                                                                            <input type="checkbox" class="page-checkbox custom-checkbox mr-2" data-page-id={page.id} data-template-path={page.template_path} />
-                                                                            <h3 class="text-2xl font-semibold text-blue-400">
-                                                                                {page.name}
-                                                                            </h3>
-                                                                        </label>
+                <h2 class="text-3xl font-bold mb-6 mt-8 capitalize text-blue-200">
+                    {section === 'all' ? 'All Pages' : `${section} Pages`}
+                </h2>
+                <ul class="space-y-3">
+                    {Object.entries(pageTree[section]).map(([folder, templates]) => (
+                        <li class="folder-group">
+                            <details class="bg-gray-800 rounded-lg p-4">
+                                <summary class="flex items-center cursor-pointer">
+                                    <span class="mr-2 text-xl">📁</span>
+                                    <span class="text-xl font-semibold text-white">{folder}</span>
+                                </summary>
+                                <ul class="mt-4 space-y-4">
+                                    {Object.entries(templates).map(([templatePath, pages]) => (
+                                        <li class="template-group">
+                                            <details class="bg-gray-700 rounded-lg p-4" >
+                                                <summary class="flex items-center justify-between cursor-pointer">
+                                                    <div class="flex items-center">
+                                                        <input type="checkbox" class="template-checkbox custom-checkbox mr-2" data-template-path={`${folder}/${templatePath}`} />
+                                                        <span class="text-lg font-semibold text-white">{templatePath}</span>
+                                                    </div>
+                                                </summary>
+                                                <ul class="mt-4 space-y-4">
+                                                    {pages.map(page => {
+                                                        const status = getStatusLabel(page);
+                                                        return (
+                                                            <li class="page bg-gray-600 rounded-lg p-4">
+                                                                <div class="flex items-center justify-between">
+                                                                    <div class="flex-grow">
+                                                                        <div class="flex items-center">
+                                                                            <label class="flex items-center cursor-pointer">
+                                                                                <input type="checkbox" class="page-checkbox custom-checkbox mr-2" data-page-id={page.id} data-template-path={page.template_path} />
+                                                                                <h3 class="text-2xl font-semibold text-blue-400">
+                                                                                    {page.name}
+                                                                                </h3>
+                                                                            </label>
+                                                                        </div>
+                                                                        <div class="mt-2 text-sm text-gray-300">
+                                                                            <p>URL: {page.absolute_url}</p>
+                                                                            <p>Status: <span class={getStatusClass(status)}>{status}</span></p>
+                                                                            <p>Created: {formatDate(page.createdAt)}</p>
+                                                                            <p>Updated: {formatDate(page.updatedAt)}</p>
+                                                                            {page.archivedAt && !page.archivedAt.includes('1970') && 
+                                                                                <p>Archived At: {formatDate(page.archivedAt)}</p>
+                                                                            }
+                                                                        </div>
                                                                     </div>
-                                                                    <div class="mt-2 text-sm text-gray-300">
-                                                                        <p>URL: {page.absolute_url}</p>
-                                                                        <p>Status: <span class={getStatusClass(status)}>{status}</span></p>
-                                                                        <p>Created: {formatDate(page.createdAt)}</p>
-                                                                        <p>Updated: {formatDate(page.updatedAt)}</p>
-                                                                        {page.archivedAt && !page.archivedAt.includes('1970') && <p>Archived At: {formatDate(page.archivedAt)}</p>}
+                                                                    <div class="flex flex-col space-y-2">
+                                                                        <button 
+                                                                            class="change-template-btn bg-blue-600 hover:bg-blue-700 text-white py-1 px-3 rounded transition duration-300"
+                                                                            data-page-id={page.id}
+                                                                            data-template-path={page.template_path}
+                                                                        >
+                                                                            Change Template
+                                                                        </button>
+                                                                        <button 
+                                                                            class="change-domain-btn bg-green-600 hover:bg-green-700 text-white py-1 px-3 rounded transition duration-300"
+                                                                            data-page-id={page.id}
+                                                                        >
+                                                                            Change Domain
+                                                                        </button>
+                                                                        <button 
+                                                                            class="change-slug-btn bg-yellow-600 hover:bg-yellow-700 text-white py-1 px-3 rounded transition duration-300"
+                                                                            data-page-id={page.id}
+                                                                            data-current-url={page.absolute_url}
+                                                                        >
+                                                                            Change Slug
+                                                                        </button>
+                                                                        <a 
+                                                                            href={page.absolute_url}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            class="bg-green-600 hover:bg-green-700 text-white py-1 px-3 rounded transition duration-300 text-center"
+                                                                        >
+                                                                            View Live Page
+                                                                        </a>
+                                                                        <a 
+                                                                            href={`https://app.hubspot.com/pages/${portalId}/editor/${page.id}`}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            class="bg-purple-600 hover:bg-purple-700 text-white py-1 px-3 rounded transition duration-300 text-center"
+                                                                        >
+                                                                            Edit in HubSpot
+                                                                        </a>
+                                                                        {page.archived && (
+                                                                            <button 
+                                                                                class="restore-page-btn bg-orange-500 hover:bg-orange-600 text-white py-1 px-3 rounded transition duration-300"
+                                                                                data-page-id={page.id}
+                                                                            >
+                                                                                Restore Page
+                                                                            </button>
+                                                                        )}
                                                                     </div>
                                                                 </div>
-                                                                <div class="flex flex-col space-y-2">
-                                                                    <button class="change-template-btn bg-blue-600 hover:bg-blue-700 text-white py-1 px-3 rounded transition duration-300" data-page-id={page.id} data-template-path={page.template_path}>Change Template</button>
-                                                                    <button class="change-domain-btn bg-red-600 hover:bg-blue-700 text-white py-1 px-3 rounded transition duration-300" data-page-id={page.id}>Change Domain</button>
-                                                                    <button class="change-slug-btn bg-yellow-600 hover:bg-yellow-700 text-white py-1 px-3 rounded transition duration-300" data-page-id={page.id} data-current-url={page.absolute_url}>Change Slug</button>
-                                                                    <a href={page.absolute_url} target="_blank" rel="noopener noreferrer" class="bg-green-600 hover:bg-green-700 text-white py-1 px-3 rounded transition duration-300 text-center">View Live Page</a>
-                                                                    <a href={`https://app.hubspot.com/pages/${portalId}/editor/${page.id}`} target="_blank" rel="noopener noreferrer" class="bg-purple-600 hover:bg-purple-700 text-white py-1 px-3 rounded transition duration-300 text-center">Edit in HubSpot</a>
-                                                                    {page.archived && (
-                                                                        <button class="restore-page-btn bg-orange-500 hover:bg-orange-600 text-white py-1 px-3 rounded transition duration-300" data-page-id={page.id}>Restore Page</button>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        </li>
-                                                    );
-                                                })}
-                                            </ul>
-                                        </details>
-                                    </li>
-                                ))}
-                            </ul>
-                        </details>
-                    </li>
-                ))}
-            </ul>
+                                                            </li>
+                                                        );
+                                                    })}
+                                                </ul>
+                                            </details>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </details>
+                        </li>
+                    ))}
+                </ul>
             </div>
         )
     ))}
 </div>
 
-<dialog id="slugModal" class="bg-gray-800 p-6 rounded-lg shadow-xl text-white w-[800px]">
-    <div class="flex justify-between items-center mb-4">
-        <h3 class="text-xl font-bold">Change URL Slugs</h3>
-        <button class="close-modal-btn text-gray-400 hover:text-white">&times;</button>
-    </div>
-    <div class="space-y-4">
-        <div class="flex space-x-2">
-            <button class="pattern-btn bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded" data-pattern="#^(.*)$#subroute/$1">Add Subroute</button>
-            <button class="pattern-btn bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded" data-pattern="#^\/find(.*)$#/replace$1">Replace Section</button>
-        </div>
-        <div>
-            <label class="block text-sm font-medium mb-1">Pattern</label>
-            <input type="text" id="patternInput" class="w-full p-2 bg-gray-700 rounded" placeholder="#pattern#replacement">
-            <div class="mt-1 text-sm text-gray-400">
-                Examples:
-                <ul class="list-disc list-inside ml-2 space-y-1">
-                    <li>#^(.*)$#subroute/$1 → adds subroute/ to start</li>
-                    <li>#^\/find(.*)$#/replace$1 → changes /find to /replace</li>
-                    <li>Use $1 to reference captured content</li>
-                </ul>
-            </div>
-        </div>
-        <div>
-            <label class="block text-sm font-medium mb-1">Current URLs</label>
-            <textarea id="currentUrls" class="w-full h-32 p-2 bg-gray-700 rounded" readonly></textarea>
-            <button class="copy-urls-btn mt-1 text-sm text-blue-400 hover:text-blue-300">Copy URLs</button>
-        </div>
-        <div>
-            <label class="block text-sm font-medium mb-1">Preview</label>
-            <textarea id="previewUrls" class="w-full h-32 p-2 bg-gray-700 rounded" readonly></textarea>
-        </div>
-        <div class="flex justify-end space-x-3 mt-4">
-            <button class="close-modal-btn bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded">Cancel</button>
-            <button id="applyChangesBtn" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded">Apply Changes</button>
-        </div>
-    </div>
-</dialog>
-
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-        const changeTemplateBtns = document.querySelectorAll('.change-template-btn');
-        const changeDomainBtns = document.querySelectorAll('.change-domain-btn');
         const templateCheckboxes = document.querySelectorAll('.template-checkbox');
         const pageCheckboxes = document.querySelectorAll('.page-checkbox');
         const changeSelectedBtn = document.getElementById('changeSelectedBtn');
         const changeSelectedDomainsBtn = document.getElementById('changeSelectedDomainsBtn');
         const changeSelectedSlugsBtn = document.getElementById('changeSelectedSlugsBtn');
 
-        changeTemplateBtns.forEach(btn => {
-            btn.addEventListener('click', handleChangeTemplate);
-        });
-
-        changeDomainBtns.forEach(btn => {
-            btn.addEventListener('click', handleChangeDomain);
-        });
-
-        templateCheckboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', handleTemplateCheckboxChange);
-        });
-
-        pageCheckboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', handlePageCheckboxChange);
-        });
-
-        changeSelectedBtn?.addEventListener('click', handleChangeSelected);
-        changeSelectedDomainsBtn?.addEventListener('click', handleChangeSelectedDomains);
-        changeSelectedSlugsBtn?.addEventListener('click', handleChangeSelectedSlugs);
-
-        async function handleChangeTemplate(event) {
-            const pageId = event.target.getAttribute('data-page-id');
-            const currentTemplatePath = event.target.getAttribute('data-template-path');
-            const newTemplatePath = await window.openTemplateModal([pageId], currentTemplatePath);
-            if (newTemplatePath) {
-                await updateTemplate(pageId, newTemplatePath);
-            }
-        }
-
-        async function handleChangeDomain(event) {
-            const target = event.target;
-            const pageId = target.getAttribute('data-page-id');
-
-            if (!pageId) {
-                console.error('No page ID found');
-                return;
-            }
-
-            try {
-                const newDomain = await window.openDomainModal(pageId);
-
-                if (newDomain) {
-                    console.log('newDomain', newDomain, pageId);
-                    const response = await fetch('/api/domains/change', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            pageId,
-                            domain: newDomain
-                        }),
-                    });
-
-                    const data = await response.json();
-
-                    if (!response.ok) {
-                        throw new Error(data.message || 'Failed to update domain');
-                    }
-
-                    alert('Domain updated successfully!');
-                    location.reload();
-                }
-            } catch (error) {
-                console.error('Error updating domain:', error);
-                alert(error instanceof Error ? error.message : 'Failed to update domain. Please try again.');
-            }
-        }
-
-        function handleTemplateCheckboxChange(event) {
-            const templateCheckbox = event.target;
-            const templateDetails = templateCheckbox.closest('details');
-            const pageCheckboxes = templateDetails.querySelectorAll('.page-checkbox');
-
-            pageCheckboxes.forEach(checkbox => {
-                checkbox.checked = templateCheckbox.checked;
-            });
-            updateChangeSelectedButton();
-        }
-
-        function handlePageCheckboxChange(event) {
-            const pageCheckbox = event.target;
-            const templateDetails = pageCheckbox.closest('details');
-            const templateCheckbox = templateDetails.querySelector('.template-checkbox');
-            const pageCheckboxes = templateDetails.querySelectorAll('.page-checkbox');
-
-            const allChecked = Array.from(pageCheckboxes).every(checkbox => checkbox.checked);
-            templateCheckbox.checked = allChecked;
-            updateChangeSelectedButton();
-        }
-
-        function updateChangeSelectedButton() {
-            const anyChecked = Array.from(pageCheckboxes).some(checkbox => checkbox.checked);
+        function updateButtonStates() {
+            const anyChecked = Array.from(pageCheckboxes).some(checkbox => (checkbox as HTMLInputElement).checked);
             if (changeSelectedBtn) changeSelectedBtn.disabled = !anyChecked;
             if (changeSelectedDomainsBtn) changeSelectedDomainsBtn.disabled = !anyChecked;
             if (changeSelectedSlugsBtn) changeSelectedSlugsBtn.disabled = !anyChecked;
         }
 
-        async function handleChangeSelected() {
-            const selectedPageIds = Array.from(document.querySelectorAll('.page-checkbox:checked'))
-                .map(checkbox => checkbox.getAttribute('data-page-id'));
+        templateCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', (e) => {
+                const templateCheckbox = e.target as HTMLInputElement;
+                const templateDetails = templateCheckbox.closest('details');
+                if (!templateDetails) return;
 
-            if (selectedPageIds.length === 0) {
-                alert('No pages selected. Please select at least one page.');
-                return;
-            }
-
-            const newTemplatePath = await window.openTemplateModal(selectedPageIds, 'Multiple');
-            if (newTemplatePath) {
-                await updateTemplatesBatch(selectedPageIds, newTemplatePath);
-            }
-        }
-
-        async function updateTemplate(pageId, templatePath) {
-            try {
-                const response = await fetch('/api/templates/change', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ pageId, templatePath }),
+                const pageCheckboxes = templateDetails.querySelectorAll('.page-checkbox');
+                pageCheckboxes.forEach(checkbox => {
+                    (checkbox as HTMLInputElement).checked = templateCheckbox.checked;
                 });
-
-                if (response.ok) {
-                    alert('Template updated successfully!');
-                    location.reload();
-                } else {
-                    throw new Error('Failed to update template');
-                }
-            } catch (error) {
-                console.error('Error updating template:', error);
-                alert('Failed to update template. Please try again.');
-            }
-        }
-
-        async function updateTemplatesBatch(pageIds, templatePath) {
-            const batchInputJsonNode = {
-                inputs: pageIds.map(id => ({
-                    id,
-                    templatePath
-                }))
-            };
-
-            try {
-                const response = await fetch('/api/pages/update-batch', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(batchInputJsonNode),
-                });
-
-                if (response.ok) {
-                    alert('Templates updated successfully!');
-                    location.reload();
-                } else {
-                    throw new Error('Failed to update templates');
-                }
-            } catch (error) {
-                console.error('Error updating templates:', error);
-                alert('Failed to update templates. Please try again.');
-            }
-        }
-
-        async function handleChangeSelectedDomains() {
-            const selectedCheckboxes = document.querySelectorAll('.page-checkbox:checked') as NodeListOf<HTMLInputElement>;
-            const selectedPageIds = Array.from(selectedCheckboxes)
-                .map(checkbox => checkbox.getAttribute('data-page-id'))
-                .filter((id): id is string => id !== null);
-
-            if (selectedPageIds.length === 0) {
-                alert('No pages selected. Please select at least one page.');
-                return;
-            }
-
-            try {
-                const newDomain = await window.openDomainModal('multiple');
-
-                if (newDomain) {
-                    const results = await Promise.allSettled(
-                        selectedPageIds.map(async (pageId) => {
-                            const response = await fetch('/api/domains/change', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                },
-                                body: JSON.stringify({
-                                    pageId,
-                                    domain: newDomain
-                                }),
-                            });
-
-                            if (!response.ok) {
-                                const data = await response.json();
-                                throw new Error(data.message || 'Failed to update domain');
-                            }
-
-                            return response.json();
-                        })
-                    );
-
-                    // Count successes and failures
-                    const successful = results.filter(result => result.status === 'fulfilled').length;
-                    const failed = results.filter(result => result.status === 'rejected').length;
-
-                    if (failed === 0) {
-                        alert(`Successfully updated domain for all ${successful} pages!`);
-                    } else {
-                        alert(`Updated domain for ${successful} pages. Failed to update ${failed} pages.`);
-                    }
-
-                    location.reload();
-                }
-            } catch (error) {
-                console.error('Error updating domains:', error);
-                alert('An error occurred while updating domains. Please try again.');
-            }
-        }
-
-        const changeSlugBtns = document.querySelectorAll('.change-slug-btn');
-
-        changeSlugBtns.forEach(btn => {
-            btn.addEventListener('click', handleChangeSlug);
-        });
-
-        async function handleChangeSlug(event) {
-            const target = event.target;
-            const pageId = target.getAttribute('data-page-id');
-            const currentUrl = target.getAttribute('data-current-url');
-
-            if (!pageId || !currentUrl) {
-                console.error('Missing page ID or URL');
-                return;
-            }
-
-            // Create a single-page array for the modal
-            const selectedPages = [{
-                pageId,
-                currentUrl
-            }];
-
-            // Store selected pages in window object for access in modal
-            window.selectedPages = selectedPages;
-
-            // Update current URLs in textarea
-            const currentUrlsTextarea = document.getElementById('currentUrls') as HTMLTextAreaElement;
-            currentUrlsTextarea.value = new URL(currentUrl).pathname;
-
-            // Show the modal
-            const modal = document.getElementById('slugModal') as HTMLDialogElement;
-            modal.showModal();
-
-            // Clear any existing input
-            const patternInput = document.getElementById('patternInput') as HTMLInputElement;
-            patternInput.value = '';
-
-            // Clear preview
-            const previewUrls = document.getElementById('previewUrls') as HTMLTextAreaElement;
-            previewUrls.value = '';
-        }
-
-        async function handleChangeSelectedSlugs() {
-            const selectedCheckboxes = document.querySelectorAll('.page-checkbox:checked') as NodeListOf<HTMLInputElement>;
-            const selectedPages = Array.from(selectedCheckboxes)
-                .map(checkbox => {
-                    const pageId = checkbox.getAttribute('data-page-id');
-                    const currentUrl = checkbox.closest('.page')?.querySelector('p')?.textContent?.replace('URL: ', '');
-                    return { pageId, currentUrl };
-                })
-                .filter((page): page is { pageId: string; currentUrl: string } =>
-                    page.pageId !== null && page.currentUrl !== undefined
-                );
-
-            if (selectedPages.length === 0) {
-                alert('No pages selected. Please select at least one page.');
-                return;
-            }
-
-            // Store selected pages in window object for access in modal
-            window.selectedPages = selectedPages;
-
-            // Update current URLs in textarea
-            const currentUrlsTextarea = document.getElementById('currentUrls') as HTMLTextAreaElement;
-            currentUrlsTextarea.value = selectedPages.map(p => new URL(p.currentUrl).pathname).join('\n');
-
-            // Show the modal
-            const modal = document.getElementById('slugModal') as HTMLDialogElement;
-            modal.showModal();
-
-            // Setup pattern input listener for live preview
-            const patternInput = document.getElementById('patternInput') as HTMLInputElement;
-            const previewUrls = document.getElementById('previewUrls') as HTMLTextAreaElement;
-
-            patternInput.addEventListener('input', updatePreview);
-
-            function updatePreview() {
-                try {
-                    const patternValue = patternInput.value;
-                    const [, pattern, replacement] = patternValue.match(/#(.+?)#(.*)/) || [];
-
-                    if (!pattern || replacement === undefined) {
-                        previewUrls.value = 'Invalid pattern format. Use #pattern#replacement';
-                        return;
-                    }
-
-                    const regex = new RegExp(pattern);
-                    const previews = selectedPages.map(page => {
-                        const currentPath = new URL(page.currentUrl).pathname;
-                        let newSlug = currentPath.replace(regex, replacement);
-
-                        // Clean up the slug
-                        newSlug = newSlug
-                            .replace(/\/+/g, '/') // Remove multiple slashes
-                            .replace(/\/$/, '')   // Remove trailing slash
-                            .replace(/^(?!\/)/, '/'); // Ensure starts with slash
-
-                        return `${currentPath} → ${newSlug}`;
-                    });
-
-                    previewUrls.value = previews.join('\n');
-                } catch (error) {
-                    previewUrls.value = 'Invalid regex pattern: ' + (error instanceof Error ? error.message : 'Unknown error');
-                }
-            }
-
-            // Setup apply changes button
-            const applyChangesBtn = document.getElementById('applyChangesBtn');
-            applyChangesBtn?.addEventListener('click', async () => {
-                const patternValue = patternInput.value;
-                const [, pattern, replacement] = patternValue.match(/#(.+?)#(.*)/) || [];
-
-                if (!pattern || replacement === undefined) {
-                    alert('Invalid pattern format. Please use #pattern#replacement format.');
-                    return;
-                }
-
-                try {
-                    const regex = new RegExp(pattern);
-                    const pagesToUpdate = window.selectedPages.filter(page => {
-                        const currentPath = new URL(page.currentUrl).pathname;
-                        // Only include pages where the regex matches
-                        return regex.test(currentPath);
-                    });
-
-                    if (pagesToUpdate.length === 0) {
-                        alert('No matches found for the given pattern. No changes will be made.');
-                        return;
-                    }
-
-                    const results = await Promise.allSettled(
-                        pagesToUpdate.map(async (page) => {
-                            const currentPath = new URL(page.currentUrl).pathname;
-                            let newSlug = currentPath.replace(regex, replacement)
-                                .replace(/\/+/g, '/') // Remove multiple slashes
-                                .replace(/\/$/, '')   // Remove trailing slash
-                                .replace(/^(?!\/)/, '/'); // Ensure starts with slash
-
-                            const response = await fetch('/api/pages/update-slug', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                },
-                                body: JSON.stringify({
-                                    pageId: page.pageId,
-                                    newSlug
-                                }),
-                            });
-
-                            if (!response.ok) {
-                                const data = await response.json();
-                                throw new Error(data.message || 'Failed to update slug');
-                            }
-
-                            return response.json();
-                        })
-                    );
-
-                    const successful = results.filter(result => result.status === 'fulfilled').length;
-                    const failed = results.filter(result => result.status === 'rejected').length;
-                    const skipped = window.selectedPages.length - pagesToUpdate.length;
-
-                    let message = `Updated slugs for ${successful} pages.`;
-                    if (failed > 0) message += ` Failed to update ${failed} pages.`;
-                    if (skipped > 0) message += ` Skipped ${skipped} pages (no pattern match).`;
-
-                    alert(message);
-                    modal.close();
-                    successful > 0 && location.reload();
-                } catch (error) {
-                    console.error('Error updating slugs:', error);
-                    alert('Invalid regex pattern or error updating slugs. Please try again.');
-                }
-            });
-        }
-
-        // Add new event listeners for the modal buttons
-        const modal = document.getElementById('slugModal') as HTMLDialogElement;
-        const patternBtns = document.querySelectorAll('.pattern-btn');
-        const closeModalBtns = document.querySelectorAll('.close-modal-btn');
-        const copyUrlsBtn = document.querySelector('.copy-urls-btn');
-        const patternInput = document.getElementById('patternInput') as HTMLInputElement;
-        const previewUrls = document.getElementById('previewUrls') as HTMLTextAreaElement;
-        const applyChangesBtn = document.getElementById('applyChangesBtn');
-
-        // Add input event listener for pattern input
-        patternInput?.addEventListener('input', updatePreview);
-
-        // Pattern buttons
-        patternBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const pattern = btn.getAttribute('data-pattern');
-                if (pattern && patternInput) {
-                    patternInput.value = pattern;
-                    updatePreview(); // Trigger preview update
-                }
+                updateButtonStates();
             });
         });
 
-        // Close modal buttons
-        closeModalBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                modal.close();
+        pageCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', (e) => {
+                const pageCheckbox = e.target as HTMLInputElement;
+                const templateDetails = pageCheckbox.closest('details');
+                if (!templateDetails) return;
+
+                const templateCheckbox = templateDetails.querySelector('.template-checkbox') as HTMLInputElement;
+                const pageCheckboxes = templateDetails.querySelectorAll('.page-checkbox');
+                
+                const allChecked = Array.from(pageCheckboxes)
+                    .every(checkbox => (checkbox as HTMLInputElement).checked);
+                
+                if (templateCheckbox) {
+                    templateCheckbox.checked = allChecked;
+                }
+                
+                updateButtonStates();
             });
         });
 
-        // Copy URLs button
-        copyUrlsBtn?.addEventListener('click', () => {
-            const currentUrls = document.getElementById('currentUrls') as HTMLTextAreaElement;
-            currentUrls.select();
-            document.execCommand('copy');
-
-            const button = copyUrlsBtn as HTMLButtonElement;
-            const originalText = button.textContent || '';
-            button.textContent = 'Copied!';
-            setTimeout(() => {
-                button.textContent = originalText;
-            }, 2000);
-        });
-
-        // Apply changes button
-        applyChangesBtn?.addEventListener('click', async () => {
-            const patternValue = patternInput.value;
-            const [, pattern, replacement] = patternValue.match(/#(.+?)#(.*)/) || [];
-
-            if (!pattern || replacement === undefined) {
-                alert('Invalid pattern format. Please use #pattern#replacement format.');
-                return;
-            }
-
-            try {
-                const regex = new RegExp(pattern);
-                const pagesToUpdate = window.selectedPages.filter(page => {
-                    const currentPath = new URL(page.currentUrl).pathname;
-                    // Only include pages where the regex matches
-                    return regex.test(currentPath);
-                });
-
-                if (pagesToUpdate.length === 0) {
-                    alert('No matches found for the given pattern. No changes will be made.');
-                    return;
-                }
-
-                const results = await Promise.allSettled(
-                    pagesToUpdate.map(async (page) => {
-                        const currentPath = new URL(page.currentUrl).pathname;
-                        let newSlug = currentPath.replace(regex, replacement)
-                            .replace(/\/+/g, '/') // Remove multiple slashes
-                            .replace(/\/$/, '')   // Remove trailing slash
-                            .replace(/^(?!\/)/, '/'); // Ensure starts with slash
-
-                        const response = await fetch('/api/pages/update-slug', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                pageId: page.pageId,
-                                newSlug
-                            }),
-                        });
-
-                        if (!response.ok) {
-                            const data = await response.json();
-                            throw new Error(data.message || 'Failed to update slug');
-                        }
-
-                        return response.json();
-                    })
-                );
-
-                const successful = results.filter(result => result.status === 'fulfilled').length;
-                const failed = results.filter(result => result.status === 'rejected').length;
-                const skipped = window.selectedPages.length - pagesToUpdate.length;
-
-                let message = `Updated slugs for ${successful} pages.`;
-                if (failed > 0) message += ` Failed to update ${failed} pages.`;
-                if (skipped > 0) message += ` Skipped ${skipped} pages (no pattern match).`;
-
-                alert(message);
-                modal.close();
-                successful > 0 && location.reload();
-            } catch (error) {
-                console.error('Error updating slugs:', error);
-                alert('Invalid regex pattern or error updating slugs. Please try again.');
-            }
-        });
-
-        function updatePreview() {
-            try {
-                const patternValue = patternInput.value;
-                const [, pattern, replacement] = patternValue.match(/#(.+?)#(.*)/) || [];
-
-                if (!pattern || replacement === undefined) {
-                    previewUrls.value = 'Invalid pattern format. Use #pattern#replacement';
-                    return;
-                }
-
-                const regex = new RegExp(pattern);
-                const previews = window.selectedPages.map(page => {
-                    const currentPath = new URL(page.currentUrl).pathname;
-                    let newSlug = currentPath.replace(regex, replacement);
-
-                    // Clean up the slug
-                    newSlug = newSlug
-                        .replace(/\/+/g, '/') // Remove multiple slashes
-                        .replace(/\/$/, '')   // Remove trailing slash
-                        .replace(/^(?!\/)/, '/'); // Ensure starts with slash
-
-                    return `${currentPath} → ${newSlug}`;
-                });
-
-                previewUrls.value = previews.join('\n');
-            } catch (error) {
-                previewUrls.value = 'Invalid regex pattern: ' + (error instanceof Error ? error.message : 'Unknown error');
-            }
-        }
+        // Initialize button states
+        updateButtonStates();
     });
 </script>
 
 <style>
-    /* ... existing styles ... */
-
     .custom-checkbox {
         appearance: none;
         -webkit-appearance: none;
@@ -770,7 +279,8 @@ const showArchived = Astro.url.searchParams.has('archived');
     }
 
     .custom-checkbox:checked {
-        @apply bg-white border-purple-400;
+        background-color: #553c9a;
+        border-color: #9f7aea;
     }
 
     .custom-checkbox:checked::after {

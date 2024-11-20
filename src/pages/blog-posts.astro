@@ -3,8 +3,9 @@ export const prerender = false;
 import Layout from '../layouts/Layout.astro';
 import BlogTree from '../components/BlogTree.astro';
 import TemplateModal from '../components/TemplateModal.astro';
-import { getBlogPosts, getBlogInfo, getDomains } from '../lib/hubspot/api';
 import DomainModal from '../components/DomainModal.astro';
+import { getBlogPosts, getBlogInfo, getDomains } from '../lib/api/hubspot';
+import { API_ENDPOINTS } from '../lib/constants';
 
 let posts = [];
 let blogInfo = [];
@@ -25,17 +26,10 @@ try {
         getBlogPosts(accessToken, Astro.url.searchParams.has('archived')),
         getBlogInfo(accessToken)
     ]);
-    console.log('posts', posts.length);
 } catch (err) {
     console.error('Error fetching blog data:', err);
     error = `Failed to fetch blog data: ${err instanceof Error ? err.message : 'Unknown error'}`;
 }
-
-const API_ENDPOINTS = {
-    changeTemplate: '/api/templates/change-blog',
-    updateBatch: '/api/blog-posts/update-batch',
-    restoreBlogPost: '/api/blog-posts/restore',
-};
 
 const domains = await getDomains(accessToken);
 ---
@@ -75,7 +69,7 @@ const domains = await getDomains(accessToken);
                 const newTemplatePath = await window.openTemplateModal(pageId, currentTemplatePath);
                 if (newTemplatePath) {
                     try {
-                        await apiCall(API_ENDPOINTS.changeTemplate, { pageId, templatePath: newTemplatePath });
+                        await apiCall(API_ENDPOINTS.templates.changeBlog, { pageId, templatePath: newTemplatePath });
                         alert('Template updated successfully!');
                         location.reload();
                     } catch (error) {
@@ -97,7 +91,7 @@ const domains = await getDomains(accessToken);
                 const newTemplatePath = await window.openTemplateModal(postIds, templatePath);
                 if (newTemplatePath) {
                     try {
-                        await apiCall(API_ENDPOINTS.updateBatch, {
+                        await apiCall(API_ENDPOINTS.blogPosts.updateBatch, {
                             inputs: postIds.map(id => ({ id, templatePath: newTemplatePath }))
                         });
                         alert('Templates updated successfully!');
@@ -116,7 +110,7 @@ const domains = await getDomains(accessToken);
                 const { pageId } = btn.dataset;
                 if (pageId) {
                     try {
-                        const result = await apiCall(API_ENDPOINTS.restoreBlogPost, { pageId });
+                        const result = await apiCall(API_ENDPOINTS.blogPosts.restore, { pageId });
                         if (result.success) {
                             alert('Blog post restored successfully!');
                             location.reload();

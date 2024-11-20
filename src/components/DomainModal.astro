@@ -1,64 +1,139 @@
 ---
-import { getDomains } from '../lib/hubspot/api';
+import type { Domain } from '../types/hubspot';
+import { getDomains } from '../lib/api/hubspot';
 
 const accessTokenCookie = Astro.cookies.get('hubspot_access_token');
 const accessToken = accessTokenCookie ? accessTokenCookie.value : null;
-const domains = await getDomains(accessToken);
+const domains: Domain[] = accessToken ? await getDomains(accessToken) : [];
 ---
 
-<div id="domainModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-    <div class="bg-gray-800 p-6 rounded-lg max-w-lg w-full">
-        <h2 class="text-2xl font-bold mb-4 text-white">Select Domain</h2>
-        <select id="domainSelect" class="w-full p-2 mb-4 bg-gray-700 text-white rounded border border-gray-600">
-            {domains.map((domain) => (
-                <option value={domain.domain}>{domain.domain}</option>
+<dialog id="domainModal" class="bg-gray-800 p-6 rounded-lg shadow-xl text-white w-[600px]">
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="text-xl font-bold">Change Domain</h3>
+        <button class="close-modal-btn text-gray-400 hover:text-white">&times;</button>
+    </div>
+    <div class="space-y-4">
+        <div class="domains-list space-y-2">
+            {domains.map(domain => (
+                <button
+                    class="domain-option w-full text-left p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+                    data-domain={domain.domain}
+                >
+                    <div class="flex items-center justify-between">
+                        <span>{domain.domain}</span>
+                        <div class="flex space-x-2">
+                            {domain.isPrimary && (
+                                <span class="px-2 py-1 text-xs bg-blue-500 rounded">Primary</span>
+                            )}
+                            {domain.isDefault && (
+                                <span class="px-2 py-1 text-xs bg-green-500 rounded">Default</span>
+                            )}
+                        </div>
+                    </div>
+                </button>
             ))}
-        </select>
-        <div class="flex justify-end space-x-2">
-            <button id="cancelDomainBtn" class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors">
-                Cancel
-            </button>
-            <button id="confirmDomainBtn" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
-                Confirm
-            </button>
+        </div>
+        <div class="flex justify-end space-x-3 mt-4">
+            <button class="close-modal-btn bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded">Cancel</button>
         </div>
     </div>
-</div>
+</dialog>
 
 <script>
-    let resolveDomainPromise;
+    let resolvePromise: ((value: string | null) => void) | null = null;
 
-    window.openDomainModal = (pageId) => {
-        const modal = document.getElementById('domainModal');
-        const title = modal?.querySelector('h2');
+    function initializeDomainModal() {
+        window.openDomainModal = async (pageId: string) => {
+            const modal = document.getElementById('domainModal') as HTMLDialogElement;
+            if (!modal) throw new Error('Domain modal not found');
+            
+            modal.showModal();
+            return new Promise<string | null>((resolve) => {
+                resolvePromise = resolve;
+            });
+        };
+    }
 
-        if (title) {
-            title.textContent = pageId === 'multiple'
-                ? 'Select Domain for Multiple Pages'
-                : 'Select Domain';
-        }
+    // Initialize on DOM content loaded
+    document.addEventListener('DOMContentLoaded', () => {
+        initializeDomainModal();
+        
+        const modal = document.getElementById('domainModal') as HTMLDialogElement;
+        if (!modal) return;
 
-        modal?.classList.remove('hidden');
-        modal?.classList.add('flex');
+        const closeButtons = modal.querySelectorAll('.close-modal-btn');
+        const domainOptions = modal.querySelectorAll('.domain-option');
 
-        return new Promise((resolve) => {
-            resolveDomainPromise = resolve;
+        closeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                modal.close();
+                if (resolvePromise) {
+                    resolvePromise(null);
+                    resolvePromise = null;
+                }
+            });
         });
-    };
 
-    document.getElementById('cancelDomainBtn')?.addEventListener('click', () => {
-        const modal = document.getElementById('domainModal');
-        modal?.classList.add('hidden');
-        modal?.classList.remove('flex');
-        resolveDomainPromise(null);
+        domainOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                const domain = option.getAttribute('data-domain');
+                if (domain && resolvePromise) {
+                    resolvePromise(domain);
+                    resolvePromise = null;
+                    modal.close();
+                }
+            });
+        });
+
+        // Close on click outside
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.close();
+                if (resolvePromise) {
+                    resolvePromise(null);
+                    resolvePromise = null;
+                }
+            }
+        });
     });
 
-    document.getElementById('confirmDomainBtn')?.addEventListener('click', () => {
-        const select = document.getElementById('domainSelect');
-        const selectedDomain = select.value;
-        const modal = document.getElementById('domainModal');
-        modal?.classList.add('hidden');
-        modal?.classList.remove('flex');
-        resolveDomainPromise(selectedDomain);
-    });
+    // Initialize on custom event
+    document.addEventListener('domain-modal-ready', initializeDomainModal);
 </script>
+
+<style>
+    dialog::backdrop {
+        background: rgba(0, 0, 0, 0.5);
+    }
+
+    dialog {
+        border: none;
+        padding: 0;
+        border-radius: 0.5rem;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .domains-list {
+        max-height: 60vh;
+        overflow-y: auto;
+    }
+
+    .domains-list::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .domains-list::-webkit-scrollbar-track {
+        background: #374151;
+        border-radius: 4px;
+    }
+
+    .domains-list::-webkit-scrollbar-thumb {
+        background: #4B5563;
+        border-radius: 4px;
+    }
+
+    .domains-list::-webkit-scrollbar-thumb:hover {
+        background: #6B7280;
+    }
+</style>

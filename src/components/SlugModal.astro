@@ -1,0 +1,178 @@
+---
+interface Props {
+    title?: string;
+}
+
+const { title = 'Change URL Slugs' } = Astro.props;
+---
+
+<dialog id="slugModal" class="bg-gray-800 p-6 rounded-lg shadow-xl text-white w-[800px]">
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="text-xl font-bold">{title}</h3>
+        <button class="close-modal-btn text-gray-400 hover:text-white">&times;</button>
+    </div>
+    <div class="space-y-4">
+        <div class="flex space-x-2">
+            <button class="pattern-btn bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded" data-pattern="#^(.*)$#subroute/$1">Add Subroute</button>
+            <button class="pattern-btn bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded" data-pattern="#^\/find(.*)$#/replace$1">Replace Section</button>
+        </div>
+        <div>
+            <label class="block text-sm font-medium mb-1">Pattern</label>
+            <input type="text" id="patternInput" class="w-full p-2 bg-gray-700 rounded" placeholder="#pattern#replacement">
+            <div class="mt-1 text-sm text-gray-400">
+                Examples:
+                <ul class="list-disc list-inside ml-2 space-y-1">
+                    <li>#^(.*)$#subroute/$1 → adds subroute/ to start</li>
+                    <li>#^\/find(.*)$#/replace$1 → changes /find to /replace</li>
+                    <li>Use $1 to reference captured content</li>
+                </ul>
+            </div>
+        </div>
+        <div>
+            <label class="block text-sm font-medium mb-1">Current URLs</label>
+            <textarea id="currentUrls" class="w-full h-32 p-2 bg-gray-700 rounded" readonly></textarea>
+            <button class="copy-urls-btn mt-1 text-sm text-blue-400 hover:text-blue-300">Copy URLs</button>
+        </div>
+        <div>
+            <label class="block text-sm font-medium mb-1">Preview</label>
+            <textarea id="previewUrls" class="w-full h-32 p-2 bg-gray-700 rounded" readonly></textarea>
+        </div>
+        <div class="flex justify-end space-x-3 mt-4">
+            <button class="close-modal-btn bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded">Cancel</button>
+            <button id="applyChangesBtn" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded">Apply Changes</button>
+        </div>
+    </div>
+</dialog>
+
+<script>
+    let resolvePromise: ((value: string | null) => void) | null = null;
+    let selectedPages: Array<{ pageId: string; currentUrl: string }> = [];
+
+    function initializeSlugModal() {
+        const modal = document.getElementById('slugModal') as HTMLDialogElement;
+        if (!modal) return;
+
+        window.openSlugModal = async (pages: Array<{ pageId: string; currentUrl: string }>) => {
+            selectedPages = pages;
+            const currentUrls = document.getElementById('currentUrls') as HTMLTextAreaElement;
+            currentUrls.value = pages.map(p => new URL(p.currentUrl).pathname).join('\n');
+            
+            modal.showModal();
+            return new Promise<string | null>((resolve) => {
+                resolvePromise = resolve;
+            });
+        };
+
+        const closeButtons = modal.querySelectorAll('.close-modal-btn');
+        const patternButtons = modal.querySelectorAll('.pattern-btn');
+        const patternInput = document.getElementById('patternInput') as HTMLInputElement;
+        const previewUrls = document.getElementById('previewUrls') as HTMLTextAreaElement;
+        const applyChangesBtn = document.getElementById('applyChangesBtn');
+        const copyUrlsBtn = modal.querySelector('.copy-urls-btn');
+
+        function updatePreview() {
+            try {
+                const patternValue = patternInput.value;
+                const [, pattern, replacement] = patternValue.match(/#(.+?)#(.*)/) || [];
+
+                if (!pattern || replacement === undefined) {
+                    previewUrls.value = 'Invalid pattern format. Use #pattern#replacement';
+                    return;
+                }
+
+                const regex = new RegExp(pattern);
+                const previews = selectedPages.map(page => {
+                    const currentPath = new URL(page.currentUrl).pathname;
+                    let newSlug = currentPath.replace(regex, replacement);
+
+                    // Clean up the slug
+                    newSlug = newSlug
+                        .replace(/\/+/g, '/') // Remove multiple slashes
+                        .replace(/\/$/, '')   // Remove trailing slash
+                        .replace(/^(?!\/)/, '/'); // Ensure starts with slash
+
+                    return `${currentPath} → ${newSlug}`;
+                });
+
+                previewUrls.value = previews.join('\n');
+            } catch (error) {
+                previewUrls.value = 'Invalid regex pattern: ' + (error instanceof Error ? error.message : 'Unknown error');
+            }
+        }
+
+        patternInput.addEventListener('input', updatePreview);
+
+        patternButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const pattern = btn.getAttribute('data-pattern');
+                if (pattern) {
+                    patternInput.value = pattern;
+                    updatePreview();
+                }
+            });
+        });
+
+        closeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                modal.close();
+                if (resolvePromise) {
+                    resolvePromise(null);
+                    resolvePromise = null;
+                }
+            });
+        });
+
+        copyUrlsBtn?.addEventListener('click', () => {
+            const currentUrls = document.getElementById('currentUrls') as HTMLTextAreaElement;
+            currentUrls.select();
+            document.execCommand('copy');
+
+            const button = copyUrlsBtn as HTMLButtonElement;
+            const originalText = button.textContent || '';
+            button.textContent = 'Copied!';
+            setTimeout(() => {
+                button.textContent = originalText;
+            }, 2000);
+        });
+
+        applyChangesBtn?.addEventListener('click', () => {
+            const patternValue = patternInput.value;
+            if (resolvePromise) {
+                resolvePromise(patternValue);
+                resolvePromise = null;
+                modal.close();
+            }
+        });
+
+        // Close on click outside
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.close();
+                if (resolvePromise) {
+                    resolvePromise(null);
+                    resolvePromise = null;
+                }
+            }
+        });
+    }
+
+    // Initialize on DOM content loaded
+    document.addEventListener('DOMContentLoaded', initializeSlugModal);
+
+    // Initialize on custom event
+    document.addEventListener('slug-modal-ready', initializeSlugModal);
+</script>
+
+<style>
+    dialog::backdrop {
+        background: rgba(0, 0, 0, 0.5);
+    }
+
+    dialog {
+        border: none;
+        padding: 0;
+        border-radius: 0.5rem;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+</style>
