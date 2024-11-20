@@ -1,18 +1,18 @@
-import type { HubSpotBlogPost } from '../../types/hubspot';
+import type { HubSpotBlogPost, HubSpotBlogInfo } from '../../../types/hubspot';
 import type { ApiResponse } from './types';
 import { ApiClient } from './client';
 import { API_ENDPOINTS } from './constants';
 
-export async function getBlogPosts(accessToken: string, archived = false): Promise<HubSpotBlogPost[]> {
+export async function getBlogPosts(accessToken: string, archived = false, refreshToken?: string): Promise<HubSpotBlogPost[]> {
   const client = new ApiClient(accessToken);
-  let allPosts: HubSpotBlogPost[] = [];
-  let nextPageUrl = `${API_ENDPOINTS.blogs.list}?limit=100${archived ? "&archived=true" : ""}`;
+  const allPosts: HubSpotBlogPost[] = [];
+  let nextPageUrl: string | null = `${API_ENDPOINTS.blogs.list}?limit=100${archived ? "&archived=true" : ""}`;
 
   try {
-    while (nextPageUrl) {
-      const data = await client.get<ApiResponse<HubSpotBlogPost>>(nextPageUrl);
-      allPosts = allPosts.concat(data.results.map(mapHubSpotBlogPost));
-      nextPageUrl = data.paging?.next?.link || null;
+    while (nextPageUrl !== null) {
+      const response: ApiResponse<HubSpotBlogPost> = await client.get(nextPageUrl, refreshToken);
+      allPosts.push(...response.results.map(mapHubSpotBlogPost));
+      nextPageUrl = response.paging?.next?.link ?? null;
     }
 
     return allPosts;
@@ -22,23 +22,23 @@ export async function getBlogPosts(accessToken: string, archived = false): Promi
   }
 }
 
-export async function getBlogInfo(accessToken: string) {
+export async function getBlogInfo(accessToken: string, refreshToken?: string): Promise<Array<{ url: string; template_path: string }>> {
   const client = new ApiClient(accessToken);
-  const data = await client.get(API_ENDPOINTS.blogs.info);
-  return data.objects.map((blog: any) => ({
+  const response: HubSpotBlogInfo = await client.get(API_ENDPOINTS.blogs.info, refreshToken);
+  return response.objects.map(blog => ({
     url: blog.absolute_url,
     template_path: blog.item_template_path
   }));
 }
 
-export async function updateBlogPost(accessToken: string, postId: string, updates: Partial<HubSpotBlogPost>) {
+export async function updateBlogPost(accessToken: string, postId: string, updates: Partial<HubSpotBlogPost>, refreshToken?: string) {
   const client = new ApiClient(accessToken);
-  return client.patch(API_ENDPOINTS.blogs.update(postId), updates);
+  return client.patch(API_ENDPOINTS.blogs.update(postId), updates, refreshToken);
 }
 
-export async function updateBlogPostsBatch(accessToken: string, updates: Array<{ id: string; templatePath: string }>) {
+export async function updateBlogPostsBatch(accessToken: string, updates: Array<{ id: string; templatePath: string }>, refreshToken?: string) {
   const client = new ApiClient(accessToken);
-  return client.post(API_ENDPOINTS.blogs.batchUpdate, { inputs: updates });
+  return client.post(API_ENDPOINTS.blogs.batchUpdate, { inputs: updates }, refreshToken);
 }
 
 function mapHubSpotBlogPost(post: any): HubSpotBlogPost {

@@ -1,5 +1,6 @@
 import type { AstroCookies } from 'astro';
 import { z } from 'zod';
+import { refreshAccessToken, setAuthCookies } from '../auth';
 
 const authSchema = z.object({
   accessToken: z.string().optional(),
@@ -8,7 +9,7 @@ const authSchema = z.object({
   portalId: z.string().optional(),
 });
 
-export function checkAuth(cookies: AstroCookies) {
+export async function checkAuth(cookies: AstroCookies) {
   const auth = authSchema.parse({
     accessToken: cookies.get('hubspot_access_token')?.value,
     refreshToken: cookies.get('hubspot_refresh_token')?.value,
@@ -19,6 +20,26 @@ export function checkAuth(cookies: AstroCookies) {
 
   const isAuthenticated = !!(auth.accessToken && auth.portalId);
   const needsRefresh = auth.expiresAt ? Date.now() >= auth.expiresAt : false;
+
+  // Automatically refresh token if needed
+  if (isAuthenticated && needsRefresh && auth.refreshToken) {
+    try {
+      const newAuth = await refreshAccessToken(auth.refreshToken);
+      setAuthCookies(cookies, newAuth);
+      return {
+        ...newAuth,
+        isAuthenticated: true,
+        needsRefresh: false,
+      };
+    } catch (error) {
+      console.error('Failed to refresh token:', error);
+      return {
+        ...auth,
+        isAuthenticated: false,
+        needsRefresh: true,
+      };
+    }
+  }
 
   return {
     ...auth,

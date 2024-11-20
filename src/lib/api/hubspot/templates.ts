@@ -1,4 +1,4 @@
-import type { HubSpotTemplate } from '../../types/hubspot';
+import type { HubSpotTemplate } from '../../../types/hubspot';
 import { ApiClient } from './client';
 import { API_ENDPOINTS } from './constants';
 

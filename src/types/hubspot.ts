@@ -34,3 +34,12 @@ export interface HubSpotBlogPost extends HubSpotPage {
   updated: string;
   url: string;
 }
+
+export interface HubSpotBlogInfo {
+  absolute_url: string;
+  item_template_path: string;
+  objects: Array<{
+    absolute_url: string;
+    item_template_path: string;
+  }>;
+}

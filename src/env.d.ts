@@ -1,4 +1,5 @@
 /// <reference path="../.astro/types.d.ts" />
+import type { AstroClientDirective } from '../.astro/types';
 
 interface ImportMetaEnv {
   readonly HUBSPOT_CLIENT_ID: string;

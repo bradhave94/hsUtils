@@ -43,7 +43,7 @@ const domains: Domain[] = accessToken ? await getDomains(accessToken) : [];
     let resolvePromise: ((value: string | null) => void) | null = null;
 
     function initializeDomainModal() {
-        window.openDomainModal = async (pageId: string) => {
+        window.openDomainModal = async () => {
             const modal = document.getElementById('domainModal') as HTMLDialogElement;
             if (!modal) throw new Error('Domain modal not found');
             

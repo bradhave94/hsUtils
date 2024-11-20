@@ -1,16 +1,15 @@
 import type { AstroCookies } from 'astro';
 import { config } from '../config/env';
 
-export function getAuthUrl(): string {
-  const { clientId, redirectUri, scopes, urls } = config.hubspot;
-  return `${urls.auth}?client_id=${clientId}&scope=${scopes}&redirect_uri=${redirectUri}`;
-}
-
-export function getAccessTokenFromRequest(request: Request): string | null {
-  return request.headers.get('Cookie')
-    ?.split(';')
-    .find(c => c.trim().startsWith('hubspot_access_token='))
-    ?.split('=')[1] || null;
+interface CookieOptions {
+  path: string;
+  httpOnly: boolean;
+  secure: boolean;
+  sameSite: 'strict' | 'lax' | 'none';
+  maxAge: number;
+  domain: string;
+  expires: Date;
+  encode: (value: string) => string;
 }
 
 interface TokenResponse {
@@ -23,11 +22,23 @@ interface PortalResponse {
   hub_id: number;
 }
 
-interface AuthResult {
+export interface AuthResult {
   accessToken: string;
   refreshToken: string;
   portalId: string;
   expiresAt: number;
+}
+
+export function getAuthUrl(): string {
+  const { clientId, redirectUri, scopes, urls } = config.hubspot;
+  return `${urls.auth}?client_id=${clientId}&scope=${scopes}&redirect_uri=${redirectUri}`;
+}
+
+export function getAccessTokenFromRequest(request: Request): string | null {
+  return request.headers.get('Cookie')
+    ?.split(';')
+    .find(c => c.trim().startsWith('hubspot_access_token='))
+    ?.split('=')[1] || null;
 }
 
 export async function getAccessTokenFromCode(code: string): Promise<AuthResult> {
@@ -78,7 +89,7 @@ export async function refreshAccessToken(refreshToken: string): Promise<AuthResu
 
 async function exchangeToken(params: Record<string, string>): Promise<TokenResponse> {
   const { clientId, clientSecret, redirectUri, urls } = config.hubspot;
-
+  
   const response = await fetch(urls.token, {
     method: 'POST',
     headers: {
@@ -100,43 +111,61 @@ async function exchangeToken(params: Record<string, string>): Promise<TokenRespo
 }
 
 export function setAuthCookies(cookies: AstroCookies, auth: AuthResult): void {
-  const cookieOptions = {
+  const cookieOptions: CookieOptions = {
     path: '/',
     httpOnly: true,
     secure: true,
     sameSite: 'strict' as const,
+    domain: window.location.hostname,
+    maxAge: auth.expiresAt,
+    expires: new Date(auth.expiresAt),
+    encode: (value: string) => value
   };
 
-  cookies.set('hubspot_access_token', auth.accessToken, {
+  const shortTerm = {
     ...cookieOptions,
-    maxAge: 60 * 60 * 24 // 24 hours
-  });
+    maxAge: 24 * 60 * 60 // 24 hours in seconds
+  };
 
-  cookies.set('hubspot_refresh_token', auth.refreshToken, {
+  const longTerm = {
     ...cookieOptions,
-    maxAge: 60 * 60 * 24 * 30 // 30 days
-  });
+    maxAge: 30 * 24 * 60 * 60 // 30 days in seconds
+  };
 
-  cookies.set('hubspot_expires_at', auth.expiresAt.toString(), {
-    ...cookieOptions,
-    maxAge: 60 * 60 * 24 // 24 hours
-  });
-
-  cookies.set('hubspot_portal_id', auth.portalId, {
-    ...cookieOptions,
-    maxAge: 60 * 60 * 24 // 24 hours
-  });
+  cookies.set('hubspot_access_token', auth.accessToken, shortTerm);
+  cookies.set('hubspot_refresh_token', auth.refreshToken, longTerm);
+  cookies.set('hubspot_expires_at', auth.expiresAt.toString(), shortTerm);
+  cookies.set('hubspot_portal_id', auth.portalId, shortTerm);
 }
 
 export function clearAuthCookies(cookies: AstroCookies): void {
   const cookieOptions = {
     path: '/',
+    httpOnly: true,
     secure: true,
-    sameSite: 'strict' as const
+    sameSite: 'strict' as const,
+    domain: window.location.hostname
   };
 
   cookies.delete('hubspot_access_token', cookieOptions);
   cookies.delete('hubspot_refresh_token', cookieOptions);
   cookies.delete('hubspot_expires_at', cookieOptions);
   cookies.delete('hubspot_portal_id', cookieOptions);
+}
+
+export function getAuthFromCookies(cookies: AstroCookies): Partial<AuthResult> & { needsRefresh: boolean } {
+  const accessToken = cookies.get('hubspot_access_token')?.value;
+  const refreshToken = cookies.get('hubspot_refresh_token')?.value;
+  const expiresAt = cookies.get('hubspot_expires_at')?.value;
+  const portalId = cookies.get('hubspot_portal_id')?.value;
+
+  const needsRefresh = expiresAt ? Date.now() >= parseInt(expiresAt) : false;
+
+  return {
+    accessToken,
+    refreshToken,
+    portalId,
+    expiresAt: expiresAt ? parseInt(expiresAt) : undefined,
+    needsRefresh
+  };
 }

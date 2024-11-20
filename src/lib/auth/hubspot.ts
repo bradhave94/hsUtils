@@ -1,5 +1,16 @@
-import { config } from '../config/env';
 import type { AstroCookies } from 'astro';
+import { config } from '../config/env';
+
+interface CookieOptions {
+  path: string;
+  httpOnly: boolean;
+  secure: boolean;
+  sameSite: 'strict' | 'lax' | 'none';
+  maxAge: number;
+  domain: string;
+  expires: Date;
+  encode: (value: string) => string;
+}
 
 interface TokenResponse {
   access_token: string;
@@ -93,39 +104,40 @@ async function exchangeToken(params: Record<string, string>): Promise<TokenRespo
 }
 
 export function setAuthCookies(cookies: AstroCookies, auth: AuthResult): void {
+  const cookieOptions: CookieOptions = {
+    path: '/',
+    httpOnly: true,
+    secure: true,
+    sameSite: 'strict' as const,
+    domain: window.location.hostname,
+    maxAge: auth.expiresAt,
+    expires: new Date(auth.expiresAt),
+    encode: (value: string) => value
+  };
+
+  const shortTerm = {
+    ...cookieOptions,
+    maxAge: 24 * 60 * 60 // 24 hours in seconds
+  };
+
+  const longTerm = {
+    ...cookieOptions,
+    maxAge: 30 * 24 * 60 * 60 // 30 days in seconds
+  };
+
+  cookies.set('hubspot_access_token', auth.accessToken, shortTerm);
+  cookies.set('hubspot_refresh_token', auth.refreshToken, longTerm);
+  cookies.set('hubspot_expires_at', auth.expiresAt.toString(), shortTerm);
+  cookies.set('hubspot_portal_id', auth.portalId, shortTerm);
+}
+
+export function clearAuthCookies(cookies: AstroCookies): void {
   const cookieOptions = {
     path: '/',
     httpOnly: true,
     secure: true,
     sameSite: 'strict' as const,
-  };
-
-  cookies.set('hubspot_access_token', auth.accessToken, {
-    ...cookieOptions,
-    maxAge: 60 * 60 * 24 // 24 hours
-  });
-
-  cookies.set('hubspot_refresh_token', auth.refreshToken, {
-    ...cookieOptions,
-    maxAge: 60 * 60 * 24 * 30 // 30 days
-  });
-
-  cookies.set('hubspot_expires_at', auth.expiresAt.toString(), {
-    ...cookieOptions,
-    maxAge: 60 * 60 * 24 // 24 hours
-  });
-
-  cookies.set('hubspot_portal_id', auth.portalId, {
-    ...cookieOptions,
-    maxAge: 60 * 60 * 24 // 24 hours
-  });
-}
-
-export function clearAuthCookies(cookies: AstroCookies): void {
-  const cookieOptions = { 
-    path: '/', 
-    secure: true, 
-    sameSite: 'strict' as const 
+    domain: window.location.hostname
   };
 
   cookies.delete('hubspot_access_token', cookieOptions);

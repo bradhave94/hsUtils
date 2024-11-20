@@ -1,18 +1,20 @@
-import type { HubSpotPage } from '../../types/hubspot';
+import type { HubSpotPage } from '../../../types/hubspot';
 import type { ApiResponse } from './types';
 import { ApiClient } from './client';
 import { API_ENDPOINTS } from './constants';
 
-export async function getSitePages(accessToken: string, archived = false): Promise<HubSpotPage[]> {
+const PAGE_LIMIT = 100;
+
+export async function getSitePages(accessToken: string, archived = false, refreshToken?: string): Promise<HubSpotPage[]> {
   const client = new ApiClient(accessToken);
-  let allPages: HubSpotPage[] = [];
-  let nextPageUrl = `${API_ENDPOINTS.pages.list}?limit=100${archived ? "&archived=true" : ""}`;
+  const allPages: HubSpotPage[] = [];
+  let nextPageUrl: string | null = `${API_ENDPOINTS.pages.list}?limit=${PAGE_LIMIT}${archived ? "&archived=true" : ""}`;
 
   try {
     while (nextPageUrl) {
-      const data = await client.get<ApiResponse<HubSpotPage>>(nextPageUrl);
-      allPages = allPages.concat(data.results.map(mapHubSpotPage));
-      nextPageUrl = data.paging?.next?.link || null;
+      const response: ApiResponse<HubSpotPage> = await client.get(nextPageUrl, refreshToken);
+      allPages.push(...response.results.map(mapHubSpotPage));
+      nextPageUrl = response.paging?.next?.link ?? null;
     }
 
     return allPages;
@@ -22,21 +24,21 @@ export async function getSitePages(accessToken: string, archived = false): Promi
   }
 }
 
-export async function updatePage(accessToken: string, pageId: string, updates: Partial<HubSpotPage>): Promise<HubSpotPage> {
+export async function updatePage(accessToken: string, pageId: string, updates: Partial<HubSpotPage>, refreshToken?: string): Promise<HubSpotPage> {
   const client = new ApiClient(accessToken);
-  return client.patch<HubSpotPage>(API_ENDPOINTS.pages.update(pageId), updates);
+  return client.patch<HubSpotPage>(API_ENDPOINTS.pages.update(pageId), updates, refreshToken);
 }
 
-export async function restorePage(accessToken: string, pageId: string): Promise<HubSpotPage> {
+export async function restorePage(accessToken: string, pageId: string, refreshToken?: string): Promise<HubSpotPage> {
   const client = new ApiClient(accessToken);
   return client.patch<HubSpotPage>(`${API_ENDPOINTS.pages.update(pageId)}?archived=true`, {
     archived: false,
-  });
+  }, refreshToken);
 }
 
-export async function updatePagesBatch(accessToken: string, batchInput: { inputs: Array<{ id: string; templatePath: string }> }) {
+export async function updatePagesBatch(accessToken: string, batchInput: { inputs: Array<{ id: string; templatePath: string }> }, refreshToken?: string) {
   const client = new ApiClient(accessToken);
-  return client.post(API_ENDPOINTS.pages.batchUpdate, batchInput);
+  return client.post(API_ENDPOINTS.pages.batchUpdate, batchInput, refreshToken);
 }
 
 function mapHubSpotPage(page: any): HubSpotPage {

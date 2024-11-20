@@ -5,30 +5,27 @@ import PageTree from '../components/PageTree.astro';
 import TemplateModal from '../components/TemplateModal.astro';
 import DomainModal from '../components/DomainModal.astro';
 import SlugModal from '../components/SlugModal.astro';
-import { getSitePages, getDomains } from '../lib/api/hubspot';
+import { getSitePages } from '../lib/api/hubspot';
 import { API_ENDPOINTS } from '../lib/constants';
+import { checkAuth } from '../lib/middleware/auth';
 
-let pages = [];
+import type { HubSpotPage } from '../types/hubspot';
+
+let pages: HubSpotPage[] = [];
 let error = '';
 
-const accessTokenCookie = Astro.cookies.get('hubspot_access_token');
-const accessToken = accessTokenCookie ? accessTokenCookie.value : null;
+const { accessToken, refreshToken, isAuthenticated } = await checkAuth(Astro.cookies);
 
-const portalIdCookie = Astro.cookies.get('hubspot_portal_id');
-const portalId = portalIdCookie ? portalIdCookie.value : null;
-
-if (!accessToken || !portalId) {
+if (!isAuthenticated || !accessToken || !refreshToken) {
     return Astro.redirect('/?error=missing_credentials');
 }
 
 try {
-    pages = await getSitePages(accessToken, Astro.url.searchParams.has('archived'));
+    pages = await getSitePages(accessToken, Astro.url.searchParams.has('archived'), refreshToken);
 } catch (err) {
     console.error('Error fetching pages:', err);
     error = `Failed to fetch pages: ${err instanceof Error ? err.message : 'Unknown error'}`;
 }
-
-const domains = await getDomains(accessToken);
 ---
 
 <Layout title="HubSpot Site Pages">

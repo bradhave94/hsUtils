@@ -4,7 +4,7 @@ import { refreshAccessToken, setAuthCookies } from '../../../lib/auth';
 
 export const get: APIRoute = async ({ cookies, redirect }) => {
     try {
-        const auth = checkAuth(cookies);
+        const auth = await checkAuth(cookies);
         if (!auth.refreshToken) {
             return redirect('/login', 302);
         }

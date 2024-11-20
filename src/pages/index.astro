@@ -5,7 +5,7 @@ import { getAuthUrl } from '../lib/auth';
 import { checkAuth } from '../lib/middleware/auth';
 
 const authUrl = getAuthUrl();
-const { isAuthenticated, portalId } = checkAuth(Astro.cookies);
+const { isAuthenticated, portalId } = await checkAuth(Astro.cookies);
 ---
 
 <Layout title="HubSpot OAuth">
