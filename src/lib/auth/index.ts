@@ -116,7 +116,7 @@ export function setAuthCookies(cookies: AstroCookies, auth: AuthResult): void {
     httpOnly: true,
     secure: true,
     sameSite: 'strict' as const,
-    domain: window.location.hostname,
+    domain: '',
     maxAge: auth.expiresAt,
     expires: new Date(auth.expiresAt),
     encode: (value: string) => value
@@ -144,7 +144,7 @@ export function clearAuthCookies(cookies: AstroCookies): void {
     httpOnly: true,
     secure: true,
     sameSite: 'strict' as const,
-    domain: window.location.hostname
+    domain: ''
   };
 
   cookies.delete('hubspot_access_token', cookieOptions);
