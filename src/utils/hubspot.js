@@ -58,7 +58,7 @@ export async function getTemplates(accessToken) {
         const data = await response.json();
         return data.objects;
     } catch (error) {
-        console.error('Error fetching templates:', error);
+        console.error('Error fetching templatess:', error.);
         throw error;
     }
 }

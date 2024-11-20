@@ -1,14 +1,14 @@
 ---
 interface Props {
 	title: string;
-	portalId?: string;
 	checkForPassword?: boolean;
 }
 
+import { checkAuth, } from '../lib/hubspot/auth';
 import Navigation from '../components/Navigation.astro';
 import PasswordProtect from '../components/PasswordProtect.astro';
 import { checkPassword } from '../middleware/password';
-const { title, portalId, checkForPassword = true } = Astro.props;
+const { title, checkForPassword = true } = Astro.props;
 const isLoggedIn = checkPassword(Astro.request);
 ---
 
@@ -25,7 +25,7 @@ const isLoggedIn = checkPassword(Astro.request);
 	<body>
 		{isLoggedIn ||!checkForPassword ? (
 			<>
-				<Navigation portalId={portalId} />
+				<Navigation />
 				<slot />
 			</>
 		) : (

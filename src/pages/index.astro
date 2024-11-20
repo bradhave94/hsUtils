@@ -12,19 +12,6 @@ let {
     portalId,
     needsRefresh
 } = checkAuth(Astro.cookies);
-
-// Optional: Handle token refresh if needed
-if (isAuthenticated && needsRefresh && refreshToken) {
-    try {
-        const newTokenData = await refreshAccessToken(refreshToken);
-        // You might want to set new cookies here or handle this in an API endpoint
-        console.log('Token refreshed');
-    } catch (error) {
-        console.error('Failed to refresh token:', error);
-        // Optionally clear cookies if refresh fails
-        isAuthenticated = false;
-    }
-}
 ---
 <Layout title="HubSpot OAuth">
 	<main class="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white p-4">

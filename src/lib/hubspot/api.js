@@ -118,8 +118,9 @@ export async function getTemplates(accessToken) {
         });
 
         if (!response.ok) {
-            const errorBody = await response.text();
-            throw new Error(`HTTP error! status: ${response.status}, body: ${errorBody}`);
+            const errorBody = await response.json();
+
+            throw new Error(`HTTP error! status: ${response.status}, body: ${errorBody.message}`);
         }
 
         const data = await response.json();
