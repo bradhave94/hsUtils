@@ -33,13 +33,13 @@ try {
         <h1 class="text-4xl font-bold mb-8 text-blue-200">HubSpot Site Pages <span class="text-xl text-blue-500">({pages.length} pages)</span></h1>
         <p class="text-sm max-w-xl mb-6 text-blue-100">Click a template to change all pages in that template. Click a page to change that page's template.</p>
         {error && <p class="text-red-500 mb-6 p-4 bg-red-100 rounded-lg">{error}</p>}
-        
+
         {pages.length === 0 ? (
             <p class="text-gray-400 text-xl">No pages found. {error ? 'An error occurred while fetching pages.' : ''}</p>
         ) : (
             <PageTree pages={pages} />
         )}
-        
+
         <a href="/" class="inline-block mt-8 bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded transition duration-300">Back to Home</a>
     </main>
 
@@ -151,7 +151,7 @@ try {
                 const newDomain = await window.openDomainModal('multiple');
                 if (newDomain) {
                     const results = await Promise.allSettled(
-                        selectedPageIds.map(pageId => 
+                        selectedPageIds.map(pageId =>
                             apiCall(API_ENDPOINTS.domains.change, { pageId, domain: newDomain })
                         )
                     );

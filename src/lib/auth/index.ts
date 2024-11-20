@@ -79,17 +79,30 @@ export async function refreshAccessToken(refreshToken: string): Promise<AuthResu
     refresh_token: refreshToken,
   });
 
+  const portalResponse = await fetch(
+    `${config.hubspot.urls.api}/oauth/v1/access-tokens/${tokenData.access_token}`,
+    {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` }
+    }
+  );
+
+  if (!portalResponse.ok) {
+    throw new Error('Failed to get portal information');
+  }
+
+  const portalData = await portalResponse.json() as PortalResponse;
+
   return {
     accessToken: tokenData.access_token,
     refreshToken: tokenData.refresh_token,
-    expiresAt: Date.now() + (tokenData.expires_in * 1000),
-    portalId: '', // Portal ID is not returned in refresh token response
+    portalId: portalData.hub_id.toString(),
+    expiresAt: Date.now() + (tokenData.expires_in * 1000)
   };
 }
 
 async function exchangeToken(params: Record<string, string>): Promise<TokenResponse> {
   const { clientId, clientSecret, redirectUri, urls } = config.hubspot;
-  
+
   const response = await fetch(urls.token, {
     method: 'POST',
     headers: {
@@ -111,6 +124,7 @@ async function exchangeToken(params: Record<string, string>): Promise<TokenRespo
 }
 
 export function setAuthCookies(cookies: AstroCookies, auth: AuthResult): void {
+  console.log(auth)
   const cookieOptions: CookieOptions = {
     path: '/',
     httpOnly: true,
