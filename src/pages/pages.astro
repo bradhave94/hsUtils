@@ -2,26 +2,30 @@
 export const prerender = false;
 import Layout from '../layouts/Layout.astro';
 import PageTree from '../components/PageTree.astro';
-import TemplateModal from '../components/TemplateModal.astro';
-import DomainModal from '../components/DomainModal.astro';
-import SlugModal from '../components/SlugModal.astro';
 import { getSitePages } from '../lib/api/hubspot';
-import { API_ENDPOINTS } from '../lib/api/hubspot/constants';
 import { checkAuth } from '../lib/middleware/auth';
+import cache, { CacheType } from '../lib/utils/cache';
 
-import type { HubSpotPage } from '../types/hubspot';
-
-let pages: HubSpotPage[] = [];
+let pages = [];
 let error = '';
 
 const { accessToken, refreshToken, isAuthenticated } = await checkAuth(Astro.cookies);
 
-if (!isAuthenticated || !accessToken || !refreshToken) {
+if (!isAuthenticated) {
     return Astro.redirect('/?error=missing_credentials');
 }
 
+const isArchived = Astro.url.searchParams.has('archived');
+
 try {
-    pages = await getSitePages(accessToken, Astro.url.searchParams.has('archived'), refreshToken);
+    // Try to get data from cache first
+    pages = cache.get(CacheType.PAGES, accessToken, { archived: isArchived }) || [];
+
+    // If not in cache, fetch from API
+    if (pages.length === 0) {
+        pages = await getSitePages(accessToken, isArchived, refreshToken);
+        cache.set(CacheType.PAGES, accessToken, pages, { archived: isArchived });
+    }
 } catch (err) {
     console.error('Error fetching pages:', err);
     error = `Failed to fetch pages: ${err instanceof Error ? err.message : 'Unknown error'}`;
@@ -29,7 +33,9 @@ try {
 ---
 
 <Layout title="HubSpot Site Pages">
+    <meta name="access-token" content={accessToken} />
     <main class="container mx-auto max-w-4xl px-4 py-8">
+
         <h1 class="text-4xl font-bold mb-4 text-blue-200">HubSpot Site Pages <span class="text-xl text-blue-500">({pages.length} pages)</span></h1>
         
         { Astro.url.searchParams.has('archived') ? (
@@ -48,218 +54,4 @@ try {
 
         <a href="/" class="inline-block mt-8 bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded transition duration-300">Back to Home</a>
     </main>
-
-    <TemplateModal />
-    <DomainModal />
-    <SlugModal />
 </Layout>
-
-<script define:vars={{ API_ENDPOINTS }}>
-    document.addEventListener('DOMContentLoaded', () => {
-        async function apiCall(endpoint, data) {
-            const response = await fetch(endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
-            });
-            if (!response.ok) throw new Error('API call failed');
-            return response.json();
-        }
-
-        // Initialize modals
-        if (!window.openDomainModal) {
-            document.dispatchEvent(new Event('domain-modal-ready'));
-        }
-        if (!window.openSlugModal) {
-            document.dispatchEvent(new Event('slug-modal-ready'));
-        }
-
-        // Event listener for changing a single template
-        document.querySelectorAll('.change-template-btn').forEach(btn => {
-            btn.addEventListener('click', async () => {
-                const { pageId, templatePath: currentTemplatePath } = btn.dataset;
-                const newTemplatePath = await window.openTemplateModal(pageId, currentTemplatePath);
-                if (newTemplatePath) {
-                    try {
-                        await apiCall(API_ENDPOINTS.templates.change, { pageId, templatePath: newTemplatePath });
-                        alert('Template updated successfully!');
-                        location.reload();
-                    } catch (error) {
-                        console.error('Failed to update template:', error);
-                        alert('Failed to update template. Please try again.');
-                    }
-                }
-            });
-        });
-
-        // Event listener for changing multiple templates
-        document.querySelectorAll('.change-selected-btn').forEach(btn => {
-            btn.addEventListener('click', async () => {
-                const selectedCheckboxes = document.querySelectorAll('.page-checkbox:checked');
-                const selectedPageIds = Array.from(selectedCheckboxes)
-                    .map(checkbox => checkbox.getAttribute('data-page-id'))
-                    .filter(id => id !== null);
-
-                if (selectedPageIds.length === 0) {
-                    alert('No pages selected. Please select at least one page.');
-                    return;
-                }
-
-                const newTemplatePath = await window.openTemplateModal(selectedPageIds, 'Multiple');
-                if (newTemplatePath) {
-                    try {
-                        await apiCall(API_ENDPOINTS.pages.updateBatch, {
-                            inputs: selectedPageIds.map(id => ({ id, templatePath: newTemplatePath }))
-                        });
-                        alert('Templates updated successfully!');
-                        location.reload();
-                    } catch (error) {
-                        console.error('Failed to update templates:', error);
-                        alert('Failed to update templates. Please try again.');
-                    }
-                }
-            });
-        });
-
-        // Event listener for changing domains
-        document.querySelectorAll('.change-domain-btn').forEach(btn => {
-            btn.addEventListener('click', async () => {
-                const pageId = btn.getAttribute('data-page-id');
-                if (!pageId) return;
-
-                try {
-                    const newDomain = await window.openDomainModal(pageId);
-                    if (newDomain) {
-                        await apiCall(API_ENDPOINTS.domains.change, { pageId, domain: newDomain });
-                        alert('Domain updated successfully!');
-                        location.reload();
-                    }
-                } catch (error) {
-                    console.error('Failed to update domain:', error);
-                    alert('Failed to update domain. Please try again.');
-                }
-            });
-        });
-
-        // Event listener for changing multiple domains
-        document.getElementById('changeSelectedDomainsBtn')?.addEventListener('click', async () => {
-            const selectedCheckboxes = document.querySelectorAll('.page-checkbox:checked');
-            const selectedPageIds = Array.from(selectedCheckboxes)
-                .map(checkbox => checkbox.getAttribute('data-page-id'))
-                .filter(id => id !== null);
-
-            if (selectedPageIds.length === 0) {
-                alert('No pages selected. Please select at least one page.');
-                return;
-            }
-
-            try {
-                const newDomain = await window.openDomainModal('multiple');
-                if (newDomain) {
-                    const results = await Promise.allSettled(
-                        selectedPageIds.map(pageId =>
-                            apiCall(API_ENDPOINTS.domains.change, { pageId, domain: newDomain })
-                        )
-                    );
-
-                    const successful = results.filter(r => r.status === 'fulfilled').length;
-                    const failed = results.filter(r => r.status === 'rejected').length;
-
-                    if (failed === 0) {
-                        alert(`Successfully updated domain for all ${successful} pages!`);
-                    } else {
-                        alert(`Updated domain for ${successful} pages. Failed to update ${failed} pages.`);
-                    }
-                    location.reload();
-                }
-            } catch (error) {
-                console.error('Failed to update domains:', error);
-                alert('Failed to update domains. Please try again.');
-            }
-        });
-
-        // Event listener for changing slugs
-        document.querySelectorAll('.change-slug-btn').forEach(btn => {
-            btn.addEventListener('click', async () => {
-                const pageId = btn.getAttribute('data-page-id');
-                const currentUrl = btn.getAttribute('data-current-url');
-                if (!pageId || !currentUrl) return;
-
-                try {
-                    const pattern = await window.openSlugModal([{ pageId, currentUrl }]);
-                    if (pattern) {
-                        const [, regex, replacement] = pattern.match(/#(.+?)#(.*)/) || [];
-                        if (!regex || replacement === undefined) {
-                            throw new Error('Invalid pattern format');
-                        }
-
-                        const currentPath = new URL(currentUrl).pathname;
-                        let newSlug = currentPath.replace(new RegExp(regex), replacement)
-                            .replace(/\/+/g, '/') // Remove multiple slashes
-                            .replace(/\/$/, '')   // Remove trailing slash
-                            .replace(/^(?!\/)/, '/'); // Ensure starts with slash
-
-                        await apiCall(API_ENDPOINTS.pages.updateSlug, { pageId, newSlug });
-                        alert('Slug updated successfully!');
-                        location.reload();
-                    }
-                } catch (error) {
-                    console.error('Failed to update slug:', error);
-                    alert('Failed to update slug. Please try again.');
-                }
-            });
-        });
-
-        // Event listener for changing multiple slugs
-        document.getElementById('changeSelectedSlugsBtn')?.addEventListener('click', async () => {
-            const selectedCheckboxes = document.querySelectorAll('.page-checkbox:checked');
-            const selectedPages = Array.from(selectedCheckboxes)
-                .map(checkbox => ({
-                    pageId: checkbox.getAttribute('data-page-id'),
-                    currentUrl: checkbox.closest('.page')?.querySelector('p')?.textContent?.replace('URL: ', '') || ''
-                }))
-                .filter(page => page.pageId && page.currentUrl);
-
-            if (selectedPages.length === 0) {
-                alert('No pages selected. Please select at least one page.');
-                return;
-            }
-
-            try {
-                const pattern = await window.openSlugModal(selectedPages);
-                if (pattern) {
-                    const [, regex, replacement] = pattern.match(/#(.+?)#(.*)/) || [];
-                    if (!regex || replacement === undefined) {
-                        throw new Error('Invalid pattern format');
-                    }
-
-                    const regExp = new RegExp(regex);
-                    const results = await Promise.allSettled(
-                        selectedPages.map(async ({ pageId, currentUrl }) => {
-                            const currentPath = new URL(currentUrl).pathname;
-                            let newSlug = currentPath.replace(regExp, replacement)
-                                .replace(/\/+/g, '/') // Remove multiple slashes
-                                .replace(/\/$/, '')   // Remove trailing slash
-                                .replace(/^(?!\/)/, '/'); // Ensure starts with slash
-
-                            return apiCall(API_ENDPOINTS.pages.updateSlug, { pageId, newSlug });
-                        })
-                    );
-
-                    const successful = results.filter(r => r.status === 'fulfilled').length;
-                    const failed = results.filter(r => r.status === 'rejected').length;
-
-                    if (failed === 0) {
-                        alert(`Successfully updated slugs for all ${successful} pages!`);
-                    } else {
-                        alert(`Updated slugs for ${successful} pages. Failed to update ${failed} pages.`);
-                    }
-                    location.reload();
-                }
-            } catch (error) {
-                console.error('Failed to update slugs:', error);
-                alert('Failed to update slugs. Please try again.');
-            }
-        });
-    });
-</script>

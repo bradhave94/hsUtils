@@ -8,6 +8,7 @@ import SlugModal from '../components/SlugModal.astro';
 import { getBlogPosts, getBlogInfo } from '../lib/api/hubspot';
 import { API_ENDPOINTS } from '../lib/api/hubspot/constants';
 import { checkAuth } from '../lib/middleware/auth';
+import cache, { CacheType } from '../lib/utils/cache';
 
 let posts = [];
 let blogInfo = [];
@@ -19,9 +20,23 @@ if (!isAuthenticated) {
     return Astro.redirect('/?error=missing_credentials');
 }
 
+const isArchived = Astro.url.searchParams.has('archived');
+
 try {
-    posts = await getBlogPosts(accessToken, Astro.url.searchParams.has('archived'), refreshToken);
-    blogInfo = await getBlogInfo(accessToken, refreshToken);
+    // Try to get data from cache first
+    posts = cache.get(CacheType.BLOGS, accessToken, { archived: isArchived }) || [];
+    blogInfo = cache.get(CacheType.BLOG_INFO, accessToken) || [];
+
+    // If not in cache, fetch from API
+    if (posts.length === 0) {
+        posts = await getBlogPosts(accessToken, isArchived, refreshToken);
+        cache.set(CacheType.BLOGS, accessToken, posts, { archived: isArchived });
+    }
+
+    if (blogInfo.length === 0) {
+        blogInfo = await getBlogInfo(accessToken, refreshToken);
+        cache.set(CacheType.BLOG_INFO, accessToken, blogInfo);
+    }
 } catch (err) {
     console.error('Error fetching pages:', err);
     error = `Failed to fetch pages: ${err instanceof Error ? err.message : 'Unknown error'}`;
@@ -29,6 +44,7 @@ try {
 ---
 
 <Layout title="HubSpot Site Pages">
+    <meta name="access-token" content={accessToken} />
     <main class="container mx-auto max-w-4xl px-4 py-8">
         <h1 class="text-4xl font-bold mb-4 text-blue-200">HubSpot Blog Posts <span class="text-xl text-blue-500">({posts.length} posts)</span></h1>
         
@@ -54,7 +70,7 @@ try {
     <SlugModal />
 </Layout>
 
-<script define:vars={{ API_ENDPOINTS }} >
+<script>
     document.addEventListener('DOMContentLoaded', () => {
         async function apiCall(endpoint, data) {
             const response = await fetch(endpoint, {
@@ -119,147 +135,6 @@ try {
                     }
                 }
             });
-        });
-
-        // Event listener for changing domains
-        document.querySelectorAll('.change-domain-btn').forEach(btn => {
-            btn.addEventListener('click', async () => {
-                const pageId = btn.getAttribute('data-page-id');
-                if (!pageId) return;
-
-                try {
-                    const newDomain = await window.openDomainModal(pageId);
-                    if (newDomain) {
-                        await apiCall(API_ENDPOINTS.domains.change, { pageId, domain: newDomain });
-                        alert('Domain updated successfully!');
-                        location.reload();
-                    }
-                } catch (error) {
-                    console.error('Failed to update domain:', error);
-                    alert('Failed to update domain. Please try again.');
-                }
-            });
-        });
-
-        // Event listener for changing multiple domains
-        document.getElementById('changeSelectedDomainsBtn')?.addEventListener('click', async () => {
-            const selectedCheckboxes = document.querySelectorAll('.page-checkbox:checked');
-            const selectedPageIds = Array.from(selectedCheckboxes)
-                .map(checkbox => checkbox.getAttribute('data-page-id'))
-                .filter(id => id !== null);
-
-            if (selectedPageIds.length === 0) {
-                alert('No pages selected. Please select at least one page.');
-                return;
-            }
-
-            try {
-                const newDomain = await window.openDomainModal('multiple');
-                if (newDomain) {
-                    const results = await Promise.allSettled(
-                        selectedPageIds.map(pageId => 
-                            apiCall(API_ENDPOINTS.domains.change, { pageId, domain: newDomain })
-                        )
-                    );
-
-                    const successful = results.filter(r => r.status === 'fulfilled').length;
-                    const failed = results.filter(r => r.status === 'rejected').length;
-
-                    if (failed === 0) {
-                        alert(`Successfully updated domain for all ${successful} pages!`);
-                    } else {
-                        alert(`Updated domain for ${successful} posts. Failed to update ${failed} posts.`);
-                    }
-                    location.reload();
-                }
-            } catch (error) {
-                console.error('Failed to update domains:', error);
-                alert('Failed to update domains. Please try again.');
-            }
-        });
-
-        // Event listener for changing slugs
-        document.querySelectorAll('.change-slug-btn').forEach(btn => {
-            btn.addEventListener('click', async () => {
-                const pageId = btn.getAttribute('data-page-id');
-                const currentUrl = btn.getAttribute('data-current-url');
-                if (!pageId || !currentUrl) return;
-
-                try {
-                    const pattern = await window.openSlugModal([{ pageId, currentUrl }]);
-                    if (pattern) {
-                        const [, regex, replacement] = pattern.match(/#(.+?)#(.*)/) || [];
-                        if (!regex || replacement === undefined) {
-                            throw new Error('Invalid pattern format');
-                        }
-
-                        const currentPath = new URL(currentUrl).pathname;
-                        let newSlug = currentPath.replace(new RegExp(regex), replacement)
-                            .replace(/\/+/g, '/') // Remove multiple slashes
-                            .replace(/\/$/, '')   // Remove trailing slash
-                            .replace(/^(?!\/)/, '/'); // Ensure starts with slash
-
-                        await apiCall(API_ENDPOINTS.blogPosts.updateSlug, { pageId, newSlug });
-                        alert('Slug updated successfully!');
-                        location.reload();
-                    }
-                } catch (error) {
-                    console.error('Failed to update slug:', error);
-                    alert('Failed to update slug. Please try again.');
-                }
-            });
-        });
-
-        // Event listener for changing multiple slugs
-        document.getElementById('changeSelectedSlugsBtn')?.addEventListener('click', async () => {
-            const selectedCheckboxes = document.querySelectorAll('.page-checkbox:checked');
-            const selectedPages = Array.from(selectedCheckboxes)
-                .map(checkbox => ({
-                    pageId: checkbox.getAttribute('data-page-id'),
-                    currentUrl: checkbox.closest('.page')?.querySelector('p')?.textContent?.replace('URL: ', '') || ''
-                }))
-                .filter(page => page.pageId && page.currentUrl);
-
-            if (selectedposts.length === 0) {
-                alert('No pages selected. Please select at least one page.');
-                return;
-            }
-
-            try {
-                const pattern = await window.openSlugModal(selectedPages);
-                if (pattern) {
-                    const [, regex, replacement] = pattern.match(/#(.+?)#(.*)/) || [];
-                    if (!regex || replacement === undefined) {
-                        throw new Error('Invalid pattern format');
-                    }
-
-                    const regExp = new RegExp(regex);
-                    const results = await Promise.allSettled(
-                        selectedposts.map(async ({ pageId, currentUrl }) => {
-                            const currentPath = new URL(currentUrl).pathname;
-                            let newSlug = currentPath.replace(regExp, replacement)
-                                .replace(/\/+/g, '/') // Remove multiple slashes
-                                .replace(/\/$/, '')   // Remove trailing slash
-                                .replace(/^(?!\/)/, '/'); // Ensure starts with slash
-
-                            return apiCall(API_ENDPOINTS.blogPosts.updateSlug, { pageId, newSlug });
-                        })
-                    );
-
-                    const successful = results.filter(r => r.status === 'fulfilled').length;
-                    const failed = results.filter(r => r.status === 'rejected').length;
-
-                    if (failed === 0) {
-                        alert(`Successfully updated slugs for all ${successful} pages!`);
-                    } else {
-                        alert(`Updated slugs for ${successful} posts. Failed to update ${failed} posts.`);
-                    }
-                    location.reload();
-                }
-            } catch (error) {
-                console.error('Failed to update slugs:', error);
-                alert('Failed to update slugs. Please try again.');
-            }
         });
     });
 </script>
