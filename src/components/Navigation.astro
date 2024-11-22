@@ -1,14 +1,19 @@
 ---
 import { checkAuth } from '../lib/middleware/auth';
+import { getAuthUrl } from '../lib/auth';
 
-const { portalId } = checkAuth(Astro.cookies);
+const authUrl = getAuthUrl();
+const auth = await checkAuth(Astro.cookies);
 ---
 
 <nav class="bg-gray-800 text-white p-4">
   <div class="container mx-auto flex justify-between items-center">
     <div class="flex items-center space-x-4">
       <a href="/" class="text-xl font-bold text-orange-500">HubSpot Utils</a>
-      {portalId && <span class="text-sm text-gray-400">Portal ID: {portalId}</span>}
+      
+      {auth.portalId && <span class="text-sm text-gray-400">
+        <a href={authUrl} class="hover:text-orange-500 transition-colors">Portal ID: {auth.portalId}</a>
+      </span>}
     </div>
     <div class="flex items-center space-x-4">
       <a href="/pages" class="hover:text-orange-500 transition-colors">Pages</a>

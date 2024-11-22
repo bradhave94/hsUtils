@@ -30,8 +30,14 @@ try {
 
 <Layout title="HubSpot Site Pages">
     <main class="container mx-auto max-w-4xl px-4 py-8">
-        <h1 class="text-4xl font-bold mb-8 text-blue-200">HubSpot Site Pages <span class="text-xl text-blue-500">({pages.length} pages)</span></h1>
-        <p class="text-sm max-w-xl mb-6 text-blue-100">Click a template to change all pages in that template. Click a page to change that page's template.</p>
+        <h1 class="text-4xl font-bold mb-4 text-blue-200">HubSpot Site Pages <span class="text-xl text-blue-500">({pages.length} pages)</span></h1>
+        
+        { Astro.url.searchParams.has('archived') ? (
+            <a href="/pages" class="text-blue-400 hover:text-blue-300 mb-8 block">Hide archived pages</a>
+        ) : (
+            <a href="/pages?archived=true" class="text-blue-400 hover:text-blue-300 mb-8 block">Show archived pages</a>
+        )}
+        
         {error && <p class="text-red-500 mb-6 p-4 bg-red-100 rounded-lg">{error}</p>}
 
         {pages.length === 0 ? (

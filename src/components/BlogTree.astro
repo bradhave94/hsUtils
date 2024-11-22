@@ -113,120 +113,122 @@ groupedPosts['No Blog'] = noBlogPosts;
 
     <ul class="space-y-3">
         {Object.entries(groupedPosts).map(([blogUrl, posts]) => (
-            <li class="blog-group">
-                <details class="bg-gray-800 rounded-lg p-4 open">
-                    <summary class="flex items-center justify-between cursor-pointer">
-                        <div class="flex items-center">
-                            <input type="checkbox" class="blog-checkbox custom-checkbox mr-2" data-blog-url={blogUrl} />
-                            <span class="text-xl font-semibold text-white">{blogUrl}</span>
-                            <span class="ml-2 text-sm text-blue-400">({posts.length} posts)</span>
-                        </div>
-                    </summary>
-                    <ul class="mt-4 space-y-4">
-                        {(posts as any[]).map(post => {
-                            const status = getStatusLabel(post);
-                            return (
-                                <li class="post bg-gray-700 rounded-lg p-4">
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex-grow">
-                                            <div class="flex items-center">
-                                                <label class="flex items-center cursor-pointer">
-                                                    <input
-                                                        type="checkbox"
-                                                        class="post-checkbox custom-checkbox mr-2 aspect-square"
-                                                        data-post-id={post.id}
-                                                        data-template-path={post.templatePath}
-                                                    />
-                                                    <h3 class="text-2xl font-semibold text-blue-400 leading-none">
-                                                        {post.name}
-                                                    </h3>
-                                                </label>
-                                            </div>
-                                            <div class="mt-2 text-sm flex flex-col gap-2 text-gray-300">
-                                                <p>URL: {post.url}</p>
-                                                <div class="flex flex-wrap gap-2 mt-1">
-                                                    <span class="text-gray-400">Tags:</span>
-                                                    {post.tagIds?.length ? (
-                                                        post.tagIds.map(id => {
-                                                            const tag = tagsMap.get(id.toString());
-                                                            return (
-                                                                <span class="px-2 py-1 text-xs bg-gray-600 rounded-full">
-                                                                    {tag?.name || id}
-                                                                </span>
-                                                            );
-                                                        })
-                                                    ) : (
-                                                        <span class="text-gray-500">None</span>
-                                                    )}
+            posts.length > 0 && (
+                <li class="blog-group">
+                    <details class="bg-gray-800 rounded-lg p-4 open">
+                        <summary class="flex items-center justify-between cursor-pointer">
+                            <div class="flex items-center">
+                                <input type="checkbox" class="blog-checkbox custom-checkbox mr-2" data-blog-url={blogUrl} />
+                                <span class="text-xl font-semibold text-white">{blogUrl}</span>
+                                <span class="ml-2 text-sm text-blue-400">({posts.length} posts)</span>
+                            </div>
+                        </summary>
+                        <ul class="mt-4 space-y-4">
+                            {(posts as any[]).map(post => {
+                                const status = getStatusLabel(post);
+                                return (
+                                    <li class="post bg-gray-700 rounded-lg p-4">
+                                        <div class="flex items-center justify-between">
+                                            <div class="flex-grow">
+                                                <div class="flex items-center">
+                                                    <label class="flex items-center cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            class="post-checkbox custom-checkbox mr-2 aspect-square"
+                                                            data-post-id={post.id}
+                                                            data-template-path={post.templatePath}
+                                                        />
+                                                        <h3 class="text-2xl font-semibold text-blue-400 leading-none">
+                                                            {post.name}
+                                                        </h3>
+                                                    </label>
                                                 </div>
-                                                <p>Status: <span class={getStatusClass(status)}>{status}</span></p>
-                                                <p>Created: {formatDate(post.created || '')}</p>
-                                                <p>Updated: {formatDate(post.updated ? post.updated.toString() : '')}</p>
-                                                {post.archivedAt != 0 &&
-                                                    <p>Archived: {formatDate(post.archivedAt)}</p>
-                                                }
+                                                <div class="mt-2 text-sm flex flex-col gap-2 text-gray-300">
+                                                    <p>URL: {post.url}</p>
+                                                    <div class="flex flex-wrap gap-2 mt-1">
+                                                        <span class="text-gray-400">Tags:</span>
+                                                        {post.tagIds?.length ? (
+                                                            post.tagIds.map(id => {
+                                                                const tag = tagsMap.get(id.toString());
+                                                                return (
+                                                                    <span class="px-2 py-1 text-xs bg-gray-600 rounded-full">
+                                                                        {tag?.name || id}
+                                                                    </span>
+                                                                );
+                                                            })
+                                                        ) : (
+                                                            <span class="text-gray-500">None</span>
+                                                        )}
+                                                    </div>
+                                                    <p>Status: <span class={getStatusClass(status)}>{status}</span></p>
+                                                    <p>Created: {formatDate(post.created || '')}</p>
+                                                    <p>Updated: {formatDate(post.updated ? post.updated.toString() : '')}</p>
+                                                    {post.archivedAt != 0 &&
+                                                        <p>Archived: {formatDate(post.archivedAt)}</p>
+                                                    }
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div class="flex flex-col space-y-2 min-w-[150px] ml-12 text-right justify-end">
-                                            <button
-                                                class="change-template-btn text-right text-sm text-blue-400 hover:text-blue-300"
-                                                data-page-id={post.id}
-                                                data-template-path={post.templatePath}
-                                            >
-                                                Change Template
-                                            </button>
-                                            <button
-                                                class="change-domain-btn text-right text-sm text-blue-400 hover:text-blue-300"
-                                                data-page-id={post.id}
-                                            >
-                                                Change Domain
-                                            </button>
-                                            <button
-                                                class="change-slug-btn text-right text-sm text-blue-400 hover:text-blue-300"
-                                                data-page-id={post.id}
-                                                data-current-url={post.url}
-                                            >
-                                                Change Slug
-                                            </button>
-                                            <button
-                                                class="edit-tags-btn text-right text-sm text-blue-400 hover:text-blue-300"
-                                                data-post-id={post.id}
-                                                data-post-tags={post.tagIds?.join(',')}
-                                            >
-                                                Edit Tags
-                                            </button>
-                                            <a
-                                                href={post.url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                class="view-live-post-btn text-right text-sm text-blue-400 hover:text-blue-300"
-                                            >
-                                                View Live Post
-                                            </a>
-                                            <a
-                                                href={`https://app.hubspot.com/blog/${portalId}/editor/${post.id}/content`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                class="edit-in-hubspot-btn text-right text-sm text-blue-400 hover:text-blue-300"
-                                            >
-                                                Edit in HubSpot
-                                            </a>
-                                            {post.archivedAt != 0 && (
+                                            <div class="flex flex-col space-y-2 min-w-[150px] ml-12 text-right justify-end">
                                                 <button
-                                                    class="restore-page-btn text-right text-sm text-blue-400 hover:text-blue-300"
+                                                    class="change-template-btn text-right text-sm text-blue-400 hover:text-blue-300"
+                                                    data-page-id={post.id}
+                                                    data-template-path={post.templatePath}
+                                                >
+                                                    Change Template
+                                                </button>
+                                                <button
+                                                    class="change-domain-btn text-right text-sm text-blue-400 hover:text-blue-300"
                                                     data-page-id={post.id}
                                                 >
-                                                    Restore Post
+                                                    Change Domain
                                                 </button>
-                                            )}
+                                                <button
+                                                    class="change-slug-btn text-right text-sm text-blue-400 hover:text-blue-300"
+                                                    data-page-id={post.id}
+                                                    data-current-url={post.url}
+                                                >
+                                                    Change Slug
+                                                </button>
+                                                <button
+                                                    class="edit-tags-btn text-right text-sm text-blue-400 hover:text-blue-300"
+                                                    data-post-id={post.id}
+                                                    data-post-tags={post.tagIds?.join(',')}
+                                                >
+                                                    Edit Tags
+                                                </button>
+                                                <a
+                                                    href={post.url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    class="view-live-post-btn text-right text-sm text-blue-400 hover:text-blue-300"
+                                                >
+                                                    View Live Post
+                                                </a>
+                                                <a
+                                                    href={`https://app.hubspot.com/blog/${portalId}/editor/${post.id}/content`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    class="edit-in-hubspot-btn text-right text-sm text-blue-400 hover:text-blue-300"
+                                                >
+                                                    Edit in HubSpot
+                                                </a>
+                                                {post.archivedAt != 0 && (
+                                                    <button
+                                                        class="restore-page-btn text-right text-sm text-blue-400 hover:text-blue-300"
+                                                        data-page-id={post.id}
+                                                    >
+                                                        Restore Post
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                </li>
-                            );
-                        })}
-                    </ul>
-                </details>
-            </li>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    </details>
+                </li>
+            )
         ))}
     </ul>
 </div>

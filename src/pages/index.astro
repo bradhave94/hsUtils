@@ -5,13 +5,11 @@ import { getAuthUrl } from '../lib/auth';
 import { checkAuth } from '../lib/middleware/auth';
 
 const authUrl = getAuthUrl();
-const { isAuthenticated, portalId } = await checkAuth(Astro.cookies);
+const { isAuthenticated } = await checkAuth(Astro.cookies);
 ---
 
 <Layout title="HubSpot OAuth">
     <main class="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white p-4">
-        <h1 class="text-4xl font-bold text-orange-500">HubSpot Utils</h1>
-        {portalId && <p>Portal ID: {portalId}</p>}
         <div class="space-y-4">
             <a href={authUrl} class="mt-6 block w-full text-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300">
                 {isAuthenticated ? 'Change Portal' : 'Authenticate with HubSpot'}
