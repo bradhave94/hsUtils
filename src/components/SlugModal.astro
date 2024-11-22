@@ -8,11 +8,11 @@ const { title = 'Change URL Slugs' } = Astro.props;
 ---
 
 <dialog id="slugModal" class="bg-gray-800 p-6 rounded-lg shadow-xl text-white w-[800px]">
-    <div class="flex justify-between items-center mb-4">
+    <div class="flex justify-between items-center mb-4 px-4 pt-4">
         <h3 class="text-xl font-bold">{title}</h3>
         <button class="close-modal-btn text-gray-400 hover:text-white">&times;</button>
     </div>
-    <div class="space-y-4">
+    <div class="space-y-4 px-4 pb-4">
         <div class="flex space-x-2">
             <button class="pattern-btn bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded" data-pattern="#^(.*)$#subroute/$1">Add Subroute</button>
             <button class="pattern-btn bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded" data-pattern="#^\/find(.*)$#/replace$1">Replace Section</button>

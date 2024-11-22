@@ -25,6 +25,7 @@ export interface HubSpotPage {
   archived: boolean;
   archivedAt: string;
   absolute_url: string;
+  url?: string;
   templatePath: string;
   template_path: string;
 }
@@ -33,6 +34,7 @@ export interface HubSpotBlogPost extends HubSpotPage {
   created: string;
   updated: string;
   url: string;
+  tagIds: string[];
 }
 
 export interface HubSpotBlogInfo {
@@ -42,4 +44,29 @@ export interface HubSpotBlogInfo {
     absolute_url: string;
     item_template_path: string;
   }>;
+}
+
+export interface HubSpotBlogTags {
+  id: string;
+  name: string;
+}
+
+export interface BlogTag {
+  id: string;
+  name: string;
+  slug: string;
+  created: string;
+  updated: string;
+  deletedAt?: string;
+}
+
+export interface TagsResponse {
+  total: number;
+  results: BlogTag[];
+  paging?: {
+    next?: {
+      link: string;
+      after: string;
+    };
+  };
 }

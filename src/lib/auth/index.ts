@@ -173,13 +173,13 @@ export function getAuthFromCookies(cookies: AstroCookies): Partial<AuthResult> &
   const expiresAt = cookies.get('hubspot_expires_at')?.value;
   const portalId = cookies.get('hubspot_portal_id')?.value;
 
-  const needsRefresh = expiresAt ? Date.now() >= parseInt(expiresAt) : false;
+  const needsRefresh = expiresAt ? Date.now() >= Number.parseInt(expiresAt) : false;
 
   return {
     accessToken,
     refreshToken,
     portalId,
-    expiresAt: expiresAt ? parseInt(expiresAt) : undefined,
+    expiresAt: expiresAt ? Number.parseInt(expiresAt) : undefined,
     needsRefresh
   };
 }

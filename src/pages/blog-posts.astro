@@ -1,15 +1,16 @@
 ---
 export const prerender = false;
 import Layout from '../layouts/Layout.astro';
-import PageTree from '../components/PageTree.astro';
+import BlogTree from '../components/BlogTree.astro';
 import TemplateModal from '../components/TemplateModal.astro';
 import DomainModal from '../components/DomainModal.astro';
 import SlugModal from '../components/SlugModal.astro';
-import { getSitePages } from '../lib/api/hubspot';
-import { API_ENDPOINTS } from '../lib/constants';
+import { getBlogPosts, getBlogInfo } from '../lib/api/hubspot';
+import { API_ENDPOINTS } from '../lib/api/hubspot/constants';
 import { checkAuth } from '../lib/middleware/auth';
 
-let pages = [];
+let posts = [];
+let blogInfo = [];
 let error = '';
 
 const { accessToken, refreshToken, isAuthenticated } = await checkAuth(Astro.cookies);
@@ -19,7 +20,8 @@ if (!isAuthenticated) {
 }
 
 try {
-    pages = await getSitePages(accessToken, Astro.url.searchParams.has('archived'), refreshToken);
+    posts = await getBlogPosts(accessToken, Astro.url.searchParams.has('archived'), refreshToken);
+    blogInfo = await getBlogInfo(accessToken, refreshToken);
 } catch (err) {
     console.error('Error fetching pages:', err);
     error = `Failed to fetch pages: ${err instanceof Error ? err.message : 'Unknown error'}`;
@@ -28,14 +30,14 @@ try {
 
 <Layout title="HubSpot Site Pages">
     <main class="container mx-auto max-w-4xl px-4 py-8">
-        <h1 class="text-4xl font-bold mb-8 text-blue-200">HubSpot Site Pages <span class="text-xl text-blue-500">({pages.length} pages)</span></h1>
+        <h1 class="text-4xl font-bold mb-8 text-blue-200">HubSpot Blog Posts <span class="text-xl text-blue-500">({posts.length} pages)</span></h1>
         <p class="text-sm max-w-xl mb-6 text-blue-100">Click a template to change all pages in that template. Click a page to change that page's template.</p>
         {error && <p class="text-red-500 mb-6 p-4 bg-red-100 rounded-lg">{error}</p>}
         
-        {pages.length === 0 ? (
-            <p class="text-gray-400 text-xl">No pages found. {error ? 'An error occurred while fetching pages.' : ''}</p>
+        {posts.length === 0 ? (
+            <p class="text-gray-400 text-xl">No pages found. {error ? 'An error occurred while fetching posts.' : ''}</p>
         ) : (
-            <PageTree pages={pages} />
+            <BlogTree posts={posts} blogInfo={blogInfo} />
         )}
         
         <a href="/" class="inline-block mt-8 bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded transition duration-300">Back to Home</a>
@@ -100,7 +102,7 @@ try {
                 const newTemplatePath = await window.openTemplateModal(selectedPageIds, 'Multiple');
                 if (newTemplatePath) {
                     try {
-                        await apiCall(API_ENDPOINTS.pages.updateBatch, {
+                        await apiCall(API_ENDPOINTS.blogPosts.updateBatch, {
                             inputs: selectedPageIds.map(id => ({ id, templatePath: newTemplatePath }))
                         });
                         alert('Templates updated successfully!');
@@ -160,7 +162,7 @@ try {
                     if (failed === 0) {
                         alert(`Successfully updated domain for all ${successful} pages!`);
                     } else {
-                        alert(`Updated domain for ${successful} pages. Failed to update ${failed} pages.`);
+                        alert(`Updated domain for ${successful} posts. Failed to update ${failed} posts.`);
                     }
                     location.reload();
                 }
@@ -191,7 +193,7 @@ try {
                             .replace(/\/$/, '')   // Remove trailing slash
                             .replace(/^(?!\/)/, '/'); // Ensure starts with slash
 
-                        await apiCall(API_ENDPOINTS.pages.updateSlug, { pageId, newSlug });
+                        await apiCall(API_ENDPOINTS.blogPosts.updateSlug, { pageId, newSlug });
                         alert('Slug updated successfully!');
                         location.reload();
                     }
@@ -212,7 +214,7 @@ try {
                 }))
                 .filter(page => page.pageId && page.currentUrl);
 
-            if (selectedPages.length === 0) {
+            if (selectedposts.length === 0) {
                 alert('No pages selected. Please select at least one page.');
                 return;
             }
@@ -227,14 +229,14 @@ try {
 
                     const regExp = new RegExp(regex);
                     const results = await Promise.allSettled(
-                        selectedPages.map(async ({ pageId, currentUrl }) => {
+                        selectedposts.map(async ({ pageId, currentUrl }) => {
                             const currentPath = new URL(currentUrl).pathname;
                             let newSlug = currentPath.replace(regExp, replacement)
                                 .replace(/\/+/g, '/') // Remove multiple slashes
                                 .replace(/\/$/, '')   // Remove trailing slash
                                 .replace(/^(?!\/)/, '/'); // Ensure starts with slash
 
-                            return apiCall(API_ENDPOINTS.pages.updateSlug, { pageId, newSlug });
+                            return apiCall(API_ENDPOINTS.blogPosts.updateSlug, { pageId, newSlug });
                         })
                     );
 
@@ -244,7 +246,7 @@ try {
                     if (failed === 0) {
                         alert(`Successfully updated slugs for all ${successful} pages!`);
                     } else {
-                        alert(`Updated slugs for ${successful} pages. Failed to update ${failed} pages.`);
+                        alert(`Updated slugs for ${successful} posts. Failed to update ${failed} posts.`);
                     }
                     location.reload();
                 }

@@ -16,7 +16,7 @@ function buildPageTree(pages: HubSpotPage[]) {
         ? { published: {}, draft: {}, archived: {} }
         : { all: {}, archived: {} };
 
-    pages.forEach(page => {
+    for (const page of pages) {
         const templatePath = page.templatePath || 'No Template';
         const [folder, ...templateParts] = templatePath.split('/');
         const template = templateParts.join('/') || 'No Template';
@@ -42,7 +42,7 @@ function buildPageTree(pages: HubSpotPage[]) {
             tree[section][folder][template] = [];
         }
         tree[section][folder][template].push(page);
-    });
+    }
 
     // Sort folders alphabetically within each section
     for (const section in tree) {
@@ -133,7 +133,7 @@ const showArchived = Astro.url.searchParams.has('archived');
                                                                                 </h3>
                                                                             </label>
                                                                         </div>
-                                                                        <div class="mt-2 text-sm text-gray-300">
+                                                                        <div class="mt-2 text-sm flex flex-col space-y-1 text-gray-300">
                                                                             <p>URL: {page.absolute_url}</p>
                                                                             <p>Status: <span class={getStatusClass(status)}>{status}</span></p>
                                                                             <p>Created: {formatDate(page.createdAt)}</p>
@@ -143,22 +143,21 @@ const showArchived = Astro.url.searchParams.has('archived');
                                                                             }
                                                                         </div>
                                                                     </div>
-                                                                    <div class="flex flex-col space-y-2">
-                                                                        <button 
-                                                                            class="change-template-btn bg-blue-600 hover:bg-blue-700 text-white py-1 px-3 rounded transition duration-300"
+                                                                    <div class="flex flex-col space-y-2 min-w-[150px] ml-12 text-right justify-end">                                                                        <button 
+                                                                            class="change-template-btn text-right text-sm text-blue-400 hover:text-blue-300"
                                                                             data-page-id={page.id}
                                                                             data-template-path={page.template_path}
                                                                         >
                                                                             Change Template
                                                                         </button>
                                                                         <button 
-                                                                            class="change-domain-btn bg-green-600 hover:bg-green-700 text-white py-1 px-3 rounded transition duration-300"
+                                                                            class="change-domain-btn text-right text-sm text-blue-400 hover:text-blue-300"
                                                                             data-page-id={page.id}
                                                                         >
                                                                             Change Domain
                                                                         </button>
                                                                         <button 
-                                                                            class="change-slug-btn bg-yellow-600 hover:bg-yellow-700 text-white py-1 px-3 rounded transition duration-300"
+                                                                            class="change-slug-btn text-right text-sm text-blue-400 hover:text-blue-300"
                                                                             data-page-id={page.id}
                                                                             data-current-url={page.absolute_url}
                                                                         >
@@ -168,7 +167,7 @@ const showArchived = Astro.url.searchParams.has('archived');
                                                                             href={page.absolute_url}
                                                                             target="_blank"
                                                                             rel="noopener noreferrer"
-                                                                            class="bg-green-600 hover:bg-green-700 text-white py-1 px-3 rounded transition duration-300 text-center"
+                                                                            class="view-live-page-btn text-right text-sm text-blue-400 hover:text-blue-300"
                                                                         >
                                                                             View Live Page
                                                                         </a>
@@ -176,13 +175,13 @@ const showArchived = Astro.url.searchParams.has('archived');
                                                                             href={`https://app.hubspot.com/pages/${portalId}/editor/${page.id}`}
                                                                             target="_blank"
                                                                             rel="noopener noreferrer"
-                                                                            class="bg-purple-600 hover:bg-purple-700 text-white py-1 px-3 rounded transition duration-300 text-center"
+                                                                            class="edit-in-hubspot-btn text-right text-sm text-blue-400 hover:text-blue-300"
                                                                         >
                                                                             Edit in HubSpot
                                                                         </a>
                                                                         {page.archived && (
                                                                             <button 
-                                                                                class="restore-page-btn bg-orange-500 hover:bg-orange-600 text-white py-1 px-3 rounded transition duration-300"
+                                                                                class="restore-page-btn text-right text-sm text-blue-400 hover:text-blue-300"
                                                                                 data-page-id={page.id}
                                                                             >
                                                                                 Restore Page

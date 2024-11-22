@@ -9,6 +9,7 @@ export const API_ENDPOINTS = {
     update: (id: string) => `https://api.hubapi.com/cms/v3/blogs/posts/${id}`,
     info: 'https://api.hubapi.com/content/api/v2/blogs',
     batchUpdate: 'https://api.hubapi.com/cms/v3/blogs/posts/batch/update',
+    tags: 'https://api.hubapi.com/cms/v3/blogs/tags?limit=100',
   },
   templates: {
     list: 'https://api.hubapi.com/content/api/v2/templates',

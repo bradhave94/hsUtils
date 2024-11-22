@@ -41,7 +41,7 @@ export async function updatePagesBatch(accessToken: string, batchInput: { inputs
   return client.post(API_ENDPOINTS.pages.batchUpdate, batchInput, refreshToken);
 }
 
-function mapHubSpotPage(page: any): HubSpotPage {
+function mapHubSpotPage(page: HubSpotPage): HubSpotPage {
   return {
     id: page.id,
     name: page.name,
@@ -53,7 +53,7 @@ function mapHubSpotPage(page: any): HubSpotPage {
     publishDate: page.publishDate,
     archived: page.archivedAt !== "1970-01-01T00:00:00Z",
     archivedAt: page.archivedAt,
-    absolute_url: page.url,
+    absolute_url: page.url ?? '',
     templatePath: page.templatePath,
     template_path: page.templatePath,
   };

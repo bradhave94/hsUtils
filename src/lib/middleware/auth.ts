@@ -13,10 +13,31 @@ export async function checkAuth(cookies: AstroCookies) {
   const auth = authSchema.parse({
     accessToken: cookies.get('hubspot_access_token')?.value,
     refreshToken: cookies.get('hubspot_refresh_token')?.value,
-    expiresAt: cookies.get('hubspot_expires_at')?.value ? 
-      parseInt(cookies.get('hubspot_expires_at')?.value || '0') : undefined,
+    expiresAt: cookies.get('hubspot_expires_at')?.value
+      ? Number.parseInt(cookies.get('hubspot_expires_at')?.value || '0')
+      : undefined,
     portalId: cookies.get('hubspot_portal_id')?.value,
   });
+
+  // If we only have a refresh token, try to get a new access token
+  if (!auth.accessToken && !auth.portalId && auth.refreshToken) {
+    try {
+      const newAuth = await refreshAccessToken(auth.refreshToken);
+      setAuthCookies(cookies, newAuth);
+      return {
+        ...newAuth,
+        isAuthenticated: true,
+        needsRefresh: false,
+      };
+    } catch (error) {
+      console.error('Failed to refresh token:', error);
+      return {
+        ...auth,
+        isAuthenticated: false,
+        needsRefresh: true,
+      };
+    }
+  }
 
   const isAuthenticated = !!(auth.accessToken && auth.portalId);
   const needsRefresh = auth.expiresAt ? Date.now() >= auth.expiresAt : false;

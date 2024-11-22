@@ -1,7 +1,27 @@
-import type { HubSpotBlogPost, HubSpotBlogInfo } from '../../../types/hubspot';
+import type { HubSpotBlogPost, HubSpotBlogInfo, HubSpotBlogTags } from '../../../types/hubspot';
 import type { ApiResponse } from './types';
 import { ApiClient } from './client';
 import { API_ENDPOINTS } from './constants';
+
+interface BlogTag {
+  id: string;
+  name: string;
+  language: string;
+  created: string;
+  updated: string;
+  deletedAt?: string;
+}
+
+interface TagsResponse {
+  total: number;
+  results: BlogTag[];
+  paging?: {
+    next?: {
+      link: string;
+      after: string;
+    };
+  };
+}
 
 export async function getBlogPosts(accessToken: string, archived = false, refreshToken?: string): Promise<HubSpotBlogPost[]> {
   const client = new ApiClient(accessToken);
@@ -31,6 +51,25 @@ export async function getBlogInfo(accessToken: string, refreshToken?: string): P
   }));
 }
 
+export async function getBlogTags(accessToken: string, refreshToken?: string): Promise<BlogTag[]> {
+  const client = new ApiClient(accessToken);
+  const allTags: BlogTag[] = [];
+  let nextPageUrl: string | null = API_ENDPOINTS.blogs.tags;
+
+  try {
+    while (nextPageUrl !== null) {
+      const response: TagsResponse = await client.get(nextPageUrl, refreshToken);
+      allTags.push(...response.results);
+      nextPageUrl = response.paging?.next?.link ?? null;
+    }
+
+    return allTags;
+  } catch (error) {
+    console.error('Error fetching blog tags:', error);
+    throw error;
+  }
+}
+
 export async function updateBlogPost(accessToken: string, postId: string, updates: Partial<HubSpotBlogPost>, refreshToken?: string) {
   const client = new ApiClient(accessToken);
   return client.patch(API_ENDPOINTS.blogs.update(postId), updates, refreshToken);
@@ -41,7 +80,7 @@ export async function updateBlogPostsBatch(accessToken: string, updates: Array<{
   return client.post(API_ENDPOINTS.blogs.batchUpdate, { inputs: updates }, refreshToken);
 }
 
-function mapHubSpotBlogPost(post: any): HubSpotBlogPost {
+function mapHubSpotBlogPost(post: Omit<HubSpotBlogPost, 'template_path'>): HubSpotBlogPost {
   return {
     id: post.id,
     name: post.name,
@@ -58,6 +97,7 @@ function mapHubSpotBlogPost(post: any): HubSpotBlogPost {
     template_path: post.templatePath,
     created: post.created,
     updated: post.updated,
-    url: post.url
+    url: post.url,
+    tagIds: post.tagIds
   };
 }

@@ -8,11 +8,11 @@ const domains: Domain[] = accessToken ? await getDomains(accessToken) : [];
 ---
 
 <dialog id="domainModal" class="bg-gray-800 p-6 rounded-lg shadow-xl text-white w-[600px]">
-    <div class="flex justify-between items-center mb-4">
+    <div class="flex justify-between items-center mb-4 px-4 pt-4">
         <h3 class="text-xl font-bold">Change Domain</h3>
         <button class="close-modal-btn text-gray-400 hover:text-white">&times;</button>
     </div>
-    <div class="space-y-4">
+    <div class="space-y-4 px-4 pb-4">
         <div class="domains-list space-y-2">
             {domains.map(domain => (
                 <button
