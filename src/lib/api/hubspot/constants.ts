@@ -17,4 +17,8 @@ export const API_ENDPOINTS = {
   domains: {
     list: 'https://api.hubapi.com/cms/v3/domains',
   },
+  modules: {
+    list: 'https://api.hubapi.com/content/api/v4/custom_widgets',
+    get: (id: string) => `https://api.hubapi.com/content/api/v4/custom_widgets/${id}`,
+  },
 } as const;

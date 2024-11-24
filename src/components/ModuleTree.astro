@@ -1,0 +1,119 @@
+---
+import type { HubSpotModule } from '../lib/api/hubspot/types';
+
+interface Props {
+    modules: HubSpotModule[];
+}
+
+const { modules } = Astro.props;
+
+function buildModuleTree(modules: HubSpotModule[]) {
+    const tree: Record<string, Record<string, HubSpotModule[]>> = {};
+
+    for (const module of modules) {
+        const folderPath = module.folderPath || 'No Folder';
+        const [rootFolder, ...subFolders] = folderPath.split('/');
+        
+        if (!tree[rootFolder]) {
+            tree[rootFolder] = {};
+        }
+
+        const subFolder = subFolders.join('/') || 'root';
+        if (!tree[rootFolder][subFolder]) {
+            tree[rootFolder][subFolder] = [];
+        }
+
+        tree[rootFolder][subFolder].push(module);
+    }
+
+    // Sort folders alphabetically
+    return Object.fromEntries(
+        Object.entries(tree).sort(([a], [b]) => a.localeCompare(b))
+    );
+}
+
+const moduleTree = buildModuleTree(modules);
+const portalId = Astro.cookies.get('hubspot_portal_id')?.value;
+---
+
+<div class="module-tree-container">
+    <ul class="space-y-3">
+        {Object.entries(moduleTree).map(([folder, subFolders]) => (
+            <li class="folder-group">
+                <details class="bg-gray-800 rounded-lg p-4">
+                    <summary class="flex items-center cursor-pointer">
+                        <span class="mr-2 text-xl">📁</span>
+                        <span class="text-xl font-semibold text-white">{folder}</span>
+                    </summary>
+                    <ul class="mt-4 space-y-4">
+                        {Object.entries(subFolders).map(([subFolder, modules]) => (
+                            <li class="subfolder-group">
+                                <details class="bg-gray-700 rounded-lg p-4">
+                                    <summary class="flex items-center cursor-pointer">
+                                        <span class="mr-2 text-lg">📁</span>
+                                        <span class="text-lg font-semibold text-white">{subFolder}</span>
+                                    </summary>
+                                    <ul class="mt-4 space-y-4">
+                                        {modules.map(module => (
+                                            <li class="module bg-gray-600 rounded-lg p-4">
+                                                <div class="flex items-center justify-between">
+                                                    <div class="flex-grow">
+                                                        <h3 class="text-2xl font-semibold text-blue-400">
+                                                            {module.name}
+                                                        </h3>
+                                                        <div class="mt-2 text-sm flex flex-col space-y-1 text-gray-300">
+                                                            <p>ID: {module.id}</p>
+                                                            <p>Global: {JSON.stringify(module.global)}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex flex-col space-y-2 min-w-[150px] ml-12 text-right">
+                                                        <a 
+                                                            href={`/modules/${module.id}`}
+                                                            class="text-sm text-blue-400 hover:text-blue-300"
+                                                        >
+                                                            Edit JSON
+                                                        </a>
+                                                        <a 
+                                                            href={`https://app.hubspot.com/design-manager/${portalId}/modules/${module.id}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            class="text-sm text-blue-400 hover:text-blue-300"
+                                                        >
+                                                            Edit in HubSpot
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </details>
+                            </li>
+                        ))}
+                    </ul>
+                </details>
+            </li>
+        ))}
+    </ul>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.edit-json-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const moduleId = (e.currentTarget as HTMLButtonElement).dataset.moduleId;
+                if (!moduleId) return;
+
+                const modal = document.querySelector(`module-json-modal[data-module-id="${moduleId}"]`);
+                if (modal) {
+                    (modal as any).openModal?.();
+                } else {
+                    console.error('Modal not found for module:', moduleId);
+                }
+            });
+        });
+    });
+</script>
+
+<style>
+    /* Reuse the same styles as PageTree.astro */
+</style> 

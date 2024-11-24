@@ -95,4 +95,25 @@ export class ApiClient {
       body: JSON.stringify(data),
     }, refreshToken);
   }
+
+  async put<T>(url: string, data: unknown, refreshToken?: string): Promise<T> {
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${this.accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data)
+    });
+
+    if (!response.ok) {
+      if (response.status === 401 && refreshToken) {
+        // Handle token refresh if needed
+        // ... your existing refresh token logic ...
+      }
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  }
 }

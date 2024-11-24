@@ -1,0 +1,158 @@
+---
+export const prerender = false;
+import Layout from '../../layouts/Layout.astro';
+import { getModule } from '../../lib/api/hubspot/modules';
+import { checkAuth } from '../../lib/middleware/auth';
+import type { HubSpotModule } from '../../lib/api/hubspot/types';
+import ModuleEditor from '../../components/ModuleEditor';
+
+const { accessToken, refreshToken, isAuthenticated } = await checkAuth(Astro.cookies);
+const moduleId = Astro.params.id;
+
+if (!isAuthenticated) {
+    return Astro.redirect('/?error=missing_credentials');
+}
+
+if (!moduleId) {
+    return Astro.redirect('/modules?error=missing_module_id');
+}
+
+// Fields to hide from the editor
+const HIDDEN_FIELDS = ['source', 'css', 'js'];
+
+let moduleData: HubSpotModule | null = null;
+let error = '';
+
+try {
+    if (accessToken) {
+        moduleData = await getModule(accessToken, moduleId, refreshToken);
+        
+        // Store fields separately before removing them
+        const fields = moduleData?.fields || [];
+        
+        // Remove fields we want to hide from the editor
+        if (moduleData) {
+            const { fields, ...filteredData } = moduleData;
+            for (const field of HIDDEN_FIELDS) {
+                (filteredData as Record<string, unknown>)[field] = undefined;
+            }
+            moduleData = { ...filteredData, fields } as HubSpotModule;
+        }
+    }
+} catch (err) {
+    console.error('Error fetching module:', err);
+    error = err instanceof Error ? err.message : 'Unknown error';
+}
+
+const formattedJson = moduleData ? JSON.stringify({ ...moduleData, fields: undefined }, null, 2) : '';
+const formattedFields = moduleData?.fields ? JSON.stringify(moduleData.fields, null, 2) : '[]';
+---
+
+<Layout title={`Edit Module: ${moduleData?.name || 'Unknown Module'}`}>
+    <meta name="access-token" content={accessToken} />
+    
+    <main class="container mx-auto max-w-6xl px-4 py-8">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-4xl font-bold text-blue-200">
+                Edit Module: {moduleData?.name || 'Unknown Module'}
+            </h1>
+            <div class="flex space-x-4 items-center">
+                <a 
+                    href="/modules" 
+                    class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition duration-300"
+                >
+                    Back to Modules
+                </a>
+                <a
+                    href={`https://app.hubspot.com/design-manager/${Astro.cookies.get('hubspot_portal_id')?.value}/modules/${moduleId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-blue-400 hover:text-blue-300"
+                >
+                    Edit in HubSpot
+                </a>
+            </div>
+        </div>
+
+        {error && (
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+                {error}
+            </div>
+        )}
+
+        <form id="moduleForm" class="mt-6">
+            <ModuleEditor 
+                client:load
+                moduleJson={formattedJson}
+                fieldsJson={formattedFields}
+            />
+            <input type="hidden" id="moduleJson" value={formattedJson} />
+            <input type="hidden" id="fieldsJson" value={formattedFields} />
+            <div class="flex justify-end mt-4 space-x-4">
+                <div id="saveStatus" class="text-gray-300 mr-4 flex items-center"></div>
+                <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded transition duration-300">
+                    Save Changes
+                </button>
+            </div>
+        </form>
+    </main>
+</Layout>
+
+<script>
+    // Form submission
+    const form = document.getElementById('moduleForm');
+    const saveStatus = document.getElementById('saveStatus');
+
+    form?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!saveStatus) return;
+
+        try {
+            const moduleJson = document.getElementById('moduleJson') as HTMLInputElement;
+            const fieldsJson = document.getElementById('fieldsJson') as HTMLInputElement;
+
+            const moduleData = JSON.parse(moduleJson.value);
+            const fieldsData = JSON.parse(fieldsJson.value);
+
+            // Merge fields into module data
+            moduleData.fields = fieldsData;
+
+            const accessToken = document.querySelector('meta[name="access-token"]')?.getAttribute('content');
+            if (!accessToken) throw new Error('Access token not found');
+
+            const moduleId = window.location.pathname.split('/').pop();
+            const response = await fetch(`/api/modules/${moduleId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${accessToken}`
+                },
+                body: JSON.stringify(moduleData)
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to save changes');
+            }
+
+            saveStatus.textContent = 'Changes saved successfully!';
+            saveStatus.className = 'text-green-400 mr-4 flex items-center';
+        } catch (error) {
+            saveStatus.textContent = error instanceof Error ? error.message : 'Failed to save changes';
+            saveStatus.className = 'text-red-400 mr-4 flex items-center';
+        }
+
+        setTimeout(() => {
+            saveStatus.textContent = '';
+            saveStatus.className = 'text-gray-300 mr-4 flex items-center';
+        }, 3000);
+    });
+</script>
+
+<style>
+    .monaco-editor {
+        padding-top: 8px;
+    }
+    .monaco-editor .margin {
+        background-color: #1e1e1e;
+    }
+</style> 

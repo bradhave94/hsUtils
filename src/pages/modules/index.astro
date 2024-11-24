@@ -1,0 +1,53 @@
+---
+export const prerender = false;
+import Layout from '../../layouts/Layout.astro';
+import ModuleTree from '../../components/ModuleTree.astro';
+import { getModules } from '../../lib/api/hubspot';
+import { checkAuth } from '../../lib/middleware/auth';
+import cache, { CacheType } from '../../lib/utils/cache';
+import type { HubSpotModule } from '../../lib/api/hubspot/types';
+
+let modules: HubSpotModule[] = [];
+let error = '';
+
+const { accessToken, refreshToken, isAuthenticated } = await checkAuth(Astro.cookies);
+
+if (!isAuthenticated) {
+    return Astro.redirect('/?error=missing_credentials');
+}
+
+if (!accessToken) {
+    return Astro.redirect('/?error=missing_access_token');
+}
+
+try {
+    // Try to get data from cache first
+    const cachedModules = (cache.get(CacheType.MODULES, accessToken) || []) as HubSpotModule[];
+    modules = cachedModules;
+
+    // If not in cache, fetch from API
+    if (modules.length === 0) {
+        modules = await getModules(accessToken, refreshToken);
+        cache.set(CacheType.MODULES, accessToken, modules);
+    }
+} catch (err) {
+    console.error('Error fetching modules:', err);
+    error = `Failed to fetch modules: ${err instanceof Error ? err.message : 'Unknown error'}`;
+}
+---
+<Layout title="HubSpot Modules">
+    <meta name="access-token" content={accessToken} />
+    <main class="container mx-auto max-w-4xl px-4 py-8">
+        <h1 class="text-4xl font-bold mb-4 text-blue-200">HubSpot Modules <span class="text-xl text-blue-500">({modules.length} modules)</span></h1>
+        
+        {error && <p class="text-red-500 mb-6 p-4 bg-red-100 rounded-lg">{error}</p>}
+
+        {modules.length === 0 ? (
+            <p class="text-gray-400 text-xl">No modules found. {error ? 'An error occurred while fetching modules.' : ''}</p>
+        ) : (
+            <ModuleTree modules={modules} />
+        )}
+
+        <a href="/" class="inline-block mt-8 bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded transition duration-300">Back to Home</a>
+    </main>
+</Layout> 

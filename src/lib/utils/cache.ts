@@ -4,15 +4,16 @@ type CacheEntry<T> = {
 };
 
 export enum CacheType {
-    BLOGS = 'blogs',
     PAGES = 'pages',
+    BLOGS = 'blogs',
+    MODULES = 'modules',
     BLOG_INFO = 'blog_info',
     PAGE_INFO = 'page_info'
 }
 
 class Cache {
     private static instance: Cache;
-    private cache: Map<string, CacheEntry<any>> = new Map();
+    private cache: Map<string, CacheEntry<unknown>> = new Map();
     private readonly TTL = 5 * 60 * 1000; // 5 minutes cache duration
 
     private constructor() {}
@@ -24,7 +25,7 @@ class Cache {
         return Cache.instance;
     }
 
-    private generateKey(type: CacheType, accessToken: string, params: Record<string, any> = {}): string {
+    private generateKey(type: CacheType, accessToken: string, params: Record<string, unknown> = {}): string {
         const paramString = Object.entries(params)
             .sort(([a], [b]) => a.localeCompare(b))
             .map(([key, value]) => `${key}_${value}`)
@@ -32,7 +33,7 @@ class Cache {
         return `${type}_${paramString}_${accessToken}`;
     }
 
-    set<T>(type: CacheType, accessToken: string, data: T, params: Record<string, any> = {}): void {
+    set<T>(type: CacheType, accessToken: string, data: T, params: Record<string, unknown> = {}): void {
         const key = this.generateKey(type, accessToken, params);
         console.log(`🔵 Cache: Setting data for ${type}`, { params });
         this.cache.set(key, {
@@ -41,7 +42,7 @@ class Cache {
         });
     }
 
-    get<T>(type: CacheType, accessToken: string, params: Record<string, any> = {}): T | null {
+    get<T>(type: CacheType, accessToken: string, params: Record<string, unknown> = {}): T | null {
         const key = this.generateKey(type, accessToken, params);
         const entry = this.cache.get(key);
         
@@ -87,7 +88,7 @@ class Cache {
         console.log('\n🔍 Cache Debug Info:');
         console.log('Total entries:', this.cache.size);
         console.log('Approximate memory usage:', 
-            Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + 'MB');
+            `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
         for (const [key, entry] of this.cache.entries()) {
             const age = Math.round((Date.now() - entry.timestamp) / 1000);
             console.log(`- ${key}: ${age}s old`);
