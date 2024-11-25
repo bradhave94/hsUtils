@@ -53,35 +53,35 @@ const pageTree = buildPageTree(pages, groupPages);
     <h1 class="text-4xl font-bold mb-4 text-blue-200">
       HubSpot Site Pages <span class="text-xl text-blue-500">({pages.length} pages)</span>
     </h1>
-    
-    <a 
-      href={isArchived ? "/pages" : "/pages?archived=true"} 
+
+    <a
+      href={isArchived ? "/pages" : "/pages?archived=true"}
       class="text-blue-400 hover:text-blue-300 mb-8 block"
     >
       {isArchived ? 'Hide archived pages' : 'Show archived pages'}
     </a>
-    
+
     {error && <p class="text-red-500 mb-6 p-4 bg-red-100 rounded-lg">{error}</p>}
 
     <div class="page-tree-container">
       <div class="flex space-x-4 mb-4">
-        <button 
-          id="changeSelectedBtn" 
-          class="change-selected-btn bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" 
+        <button
+          id="changeSelectedBtn"
+          class="change-selected-btn bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
           disabled
         >
           Change Selected Template
         </button>
-        <button 
-          id="changeSelectedDomainsBtn" 
-          class="changeSelectedDomainsBtn bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" 
+        <button
+          id="changeSelectedDomainsBtn"
+          class="changeSelectedDomainsBtn bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
           disabled
         >
           Change Selected Domains
         </button>
-        <button 
-          id="changeSelectedSlugsBtn" 
-          class="changeSelectedSlugsBtn bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-4 rounded transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" 
+        <button
+          id="changeSelectedSlugsBtn"
+          class="changeSelectedSlugsBtn bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-4 rounded transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
           disabled
         >
           Change Selected Slugs
@@ -108,10 +108,10 @@ const pageTree = buildPageTree(pages, groupPages);
                           <details class="bg-gray-700 rounded-lg p-4">
                             <summary class="flex items-center justify-between cursor-pointer">
                               <div class="flex items-center">
-                                <input 
-                                  type="checkbox" 
-                                  class="template-checkbox custom-checkbox mr-2" 
-                                  data-template-path={`${folder}/${templatePath}`} 
+                                <input
+                                  type="checkbox"
+                                  class="template-checkbox custom-checkbox mr-2"
+                                  data-template-path={`${folder}/${templatePath}`}
                                 />
                                 <span class="text-lg font-semibold text-white">{templatePath}</span>
                               </div>
@@ -125,10 +125,10 @@ const pageTree = buildPageTree(pages, groupPages);
                                             <div class="flex-grow">
                                             <div class="flex items-center">
                                                 <label class="flex items-center cursor-pointer">
-                                                <input 
-                                                    type="checkbox" 
-                                                    class="page-checkbox custom-checkbox mr-2" 
-                                                    data-page-id={page.id} 
+                                                <input
+                                                    type="checkbox"
+                                                    class="page-checkbox custom-checkbox mr-2"
+                                                    data-page-id={page.id}
                                                     data-template-path={page.templatePath}
                                                     data-current-url={page.absolute_url}
                                                 />
@@ -142,33 +142,33 @@ const pageTree = buildPageTree(pages, groupPages);
                                                 <p>Status: <span class={status.className}>{status.label}</span></p>
                                                 <p>Created: {formatDate(page.createdAt)}</p>
                                                 <p>Updated: {formatDate(page.updatedAt)}</p>
-                                                {page.archivedAt && !page.archivedAt.includes('1970') && 
+                                                {page.archivedAt && !page.archivedAt.includes('1970') &&
                                                 <p>Archived At: {formatDate(page.archivedAt)}</p>
                                                 }
                                             </div>
                                             </div>
                                             <div class="flex flex-col space-y-2 min-w-[150px] ml-12 text-right justify-end">
-                                            <button 
+                                            <button
                                                 class="change-template-btn text-right text-sm text-blue-400 hover:text-blue-300"
                                                 data-page-id={page.id}
                                                 data-template-path={page.templatePath}
                                             >
                                                 Change Template
                                             </button>
-                                            <button 
+                                            <button
                                                 class="change-domain-btn text-right text-sm text-blue-400 hover:text-blue-300"
                                                 data-page-id={page.id}
                                             >
                                                 Change Domain
                                             </button>
-                                            <button 
+                                            <button
                                                 class="change-slug-btn text-right text-sm text-blue-400 hover:text-blue-300"
                                                 data-page-id={page.id}
                                                 data-current-url={page.absolute_url}
                                             >
                                                 Change Slug
                                             </button>
-                                            <a 
+                                            <a
                                                 href={page.absolute_url}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
@@ -176,7 +176,7 @@ const pageTree = buildPageTree(pages, groupPages);
                                             >
                                                 View Live Page
                                             </a>
-                                            <a 
+                                            <a
                                                 href={`https://app.hubspot.com/pages/${portalId}/editor/${page.id}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
@@ -185,7 +185,7 @@ const pageTree = buildPageTree(pages, groupPages);
                                                 Edit in HubSpot
                                             </a>
                                             {page.archived && (
-                                                <button 
+                                                <button
                                                 class="restore-page-btn text-right text-sm text-blue-400 hover:text-blue-300"
                                                 data-page-id={page.id}
                                                 >
@@ -328,7 +328,7 @@ const pageTree = buildPageTree(pages, groupPages);
         }
 
         const [, regexPattern, replacement] = patternMatch;
-        
+
         try {
           new RegExp(regexPattern);
         } catch (e) {
@@ -344,9 +344,9 @@ const pageTree = buildPageTree(pages, groupPages);
           try {
             const currentPath = new URL(page.currentUrl).pathname;
             const newSlug = currentPath.replace(regex, replacement)
-              .replace(/\/+/g, '/') 
-              .replace(/\/$/, '')   
-              .replace(/^(?!\/)/, '/'); 
+              .replace(/\/+/g, '/')
+              .replace(/\/$/, '')
+              .replace(/^(?!\/)/, '/');
 
             return {
               pageId: page.pageId,
@@ -404,14 +404,14 @@ const pageTree = buildPageTree(pages, groupPages);
           id: checkbox.dataset.pageId,
           templatePath: checkbox.dataset.templatePath
         }))
-        .filter((page): page is { id: string; templatePath: string } => 
+        .filter((page): page is { id: string; templatePath: string } =>
           page.id != null && page.templatePath != null);
 
       if (window.openTemplateModal && checkedPages.length > 0) {
         const pageIds = checkedPages.map(page => page.id);
         const templatePath = checkedPages[0].templatePath;
         const newTemplatePath = await window.openTemplateModal(pageIds, templatePath);
-        
+
         if (newTemplatePath) {
           await handleTemplateChange(pageIds, newTemplatePath);
         }
@@ -439,7 +439,7 @@ const pageTree = buildPageTree(pages, groupPages);
           pageId: checkbox.dataset.pageId,
           currentUrl: checkbox.dataset.currentUrl
         }))
-        .filter((page): page is { pageId: string; currentUrl: string } => 
+        .filter((page): page is { pageId: string; currentUrl: string } =>
           page.pageId != null && page.currentUrl != null);
 
       if (window.openSlugModal && checkedPages.length > 0) {
@@ -470,7 +470,7 @@ const pageTree = buildPageTree(pages, groupPages);
       btn.addEventListener('click', async (e) => {
         const button = e.currentTarget as HTMLButtonElement;
         const pageId = button.dataset.pageId;
-        
+
         if (pageId && window.openDomainModal) {
           const newDomain = await window.openDomainModal(pageId);
           if (newDomain) {
@@ -485,7 +485,7 @@ const pageTree = buildPageTree(pages, groupPages);
         const button = e.currentTarget as HTMLButtonElement;
         const pageId = button.dataset.pageId;
         const currentUrl = button.dataset.currentUrl;
-        
+
         if (!pageId || !currentUrl) {
           console.error('Missing required data attributes');
           return;
@@ -528,13 +528,13 @@ const pageTree = buildPageTree(pages, groupPages);
 
         const templateCheckbox = templateDetails.querySelector<HTMLInputElement>('.template-checkbox');
         const pageCheckboxes = templateDetails.querySelectorAll<HTMLInputElement>('.page-checkbox');
-        
+
         const allChecked = Array.from(pageCheckboxes).every(checkbox => checkbox.checked);
-        
+
         if (templateCheckbox) {
           templateCheckbox.checked = allChecked;
         }
-        
+
         updateButtonStates();
       });
     });
@@ -547,7 +547,7 @@ const pageTree = buildPageTree(pages, groupPages);
       btn.addEventListener('click', async (e) => {
         const button = e.currentTarget as HTMLButtonElement;
         const pageId = button.dataset.pageId;
-        
+
         if (pageId) {
           await handleRestorePage(pageId);
         }
@@ -558,11 +558,11 @@ const pageTree = buildPageTree(pages, groupPages);
   async function invalidateCache() {
     try {
       const accessToken = document.querySelector('meta[name="access-token"]')?.getAttribute('content');
-      
+
       await fetch('/api/invalidate-cache', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           accessToken,
           type: null
         })

@@ -1,38 +1,49 @@
 ---
 export const prerender = false;
-import Layout from '../layouts/Layout.astro';
-import SlugModal from '../components/SlugModal.astro';
-import { getBlogPosts, getBlogInfo, getBlogTags } from '../lib/api/hubspot';
-import { checkAuth } from '../lib/middleware/auth';
-import cache, { CacheType } from '../lib/utils/cache';
-import type { HubSpotBlogPost, BlogTag } from '@/types/hubspot';
-import { formatDate } from '../lib/utils/date';
+import Layout from "../layouts/Layout.astro";
+import SlugModal from "../components/SlugModal.astro";
+import { getBlogPosts, getBlogInfo, getBlogTags } from "../lib/api/hubspot";
+import { checkAuth } from "../lib/middleware/auth";
+import cache, { CacheType } from "../lib/utils/cache";
+import type { HubSpotBlogPost, BlogTag } from "@/types/hubspot";
+import { formatDate } from "../lib/utils/date";
 
 let posts: HubSpotBlogPost[] = [];
 let blogInfo: Array<{ url: string; template_path: string }> = [];
-let error = '';
+let error = "";
 
-const { accessToken, refreshToken, isAuthenticated } = await checkAuth(Astro.cookies);
-const cacheDisabled = Astro.cookies.get('cache-disabled')?.boolean() || false;
+const { accessToken, refreshToken, isAuthenticated } = await checkAuth(
+    Astro.cookies,
+);
+const cacheDisabled = Astro.cookies.get("cache-disabled")?.boolean() || false;
 
 if (!isAuthenticated) {
-    return Astro.redirect('/?error=missing_credentials');
+    return Astro.redirect("/?error=missing_credentials");
 }
 
-const isArchived = Astro.url.searchParams.has('archived');
+const isArchived = Astro.url.searchParams.has("archived");
 
 try {
     // Only use cache if not disabled
     if (!cacheDisabled) {
-        posts = cache.get(CacheType.BLOGS, accessToken as string, { archived: isArchived }) || [];
+        posts =
+            cache.get(CacheType.BLOGS, accessToken as string, {
+                archived: isArchived,
+            }) || [];
         blogInfo = cache.get(CacheType.BLOG_INFO, accessToken as string) || [];
     }
 
     // If not in cache or cache is disabled, fetch from API
     if (posts.length === 0) {
-        posts = await getBlogPosts(accessToken as string, isArchived, refreshToken);
+        posts = await getBlogPosts(
+            accessToken as string,
+            isArchived,
+            refreshToken,
+        );
         if (!cacheDisabled) {
-            cache.set(CacheType.BLOGS, accessToken as string, posts, { archived: isArchived });
+            cache.set(CacheType.BLOGS, accessToken as string, posts, {
+                archived: isArchived,
+            });
         }
     }
 
@@ -43,42 +54,47 @@ try {
         }
     }
 } catch (err) {
-    console.error('Error fetching pages:', err);
-    error = `Failed to fetch pages: ${err instanceof Error ? err.message : 'Unknown error'}`;
+    console.error("Error fetching pages:", err);
+    error = `Failed to fetch pages: ${err instanceof Error ? err.message : "Unknown error"}`;
 }
 
 // Fetch tags for the blog posts
-const tags = await getBlogTags(accessToken as string) as BlogTag[];
-const portalId = Astro.cookies.get('hubspot_portal_id')?.value;
+const tags = (await getBlogTags(accessToken as string)) as BlogTag[];
+const portalId = Astro.cookies.get("hubspot_portal_id")?.value;
 
 function getStatusLabel(post: HubSpotBlogPost): string {
-    if (post.archivedAt && typeof post.archivedAt === 'number' && post.archivedAt !== 0) return 'Archived';
-    switch (post.state || 'DRAFT') {
-        case 'PUBLISHED': return 'Published';
-        case 'DRAFT': return 'Draft';
-        case 'SCHEDULED': return 'Scheduled';
-        case 'PUBLISHED_OR_SCHEDULED': return 'Published';
-        default: return post.state || 'Draft';
+    if (
+        post.archivedAt &&
+        typeof post.archivedAt === "number" &&
+        post.archivedAt !== 0
+    )
+        return "Archived";
+    switch (post.state || "DRAFT") {
+        case "PUBLISHED":
+            return "Published";
+        case "DRAFT":
+            return "Draft";
+        case "SCHEDULED":
+            return "Scheduled";
+        case "PUBLISHED_OR_SCHEDULED":
+            return "Published";
+        default:
+            return post.state || "Draft";
     }
 }
 
 function getStatusClass(status: string): string {
     switch (status.toLowerCase()) {
-        case 'published': return 'text-green-500';
-        case 'draft': return 'text-yellow-500';
-        case 'archived': return 'text-red-500';
-        case 'scheduled': return 'text-blue-500';
-        default: return 'text-gray-500';
-    }
-}
-
-// Add type declarations for window object
-declare global {
-    interface Window {
-        selectedPages: Array<{ pageId: string; currentUrl: string }>;
-        openTemplateModal: (pageId: string | string[], currentTemplate?: string) => Promise<string | null>;
-        openDomainModal: (pageId: string | 'multiple') => Promise<string | null>;
-        openSlugModal: (pages: Array<{ pageId: string; currentUrl: string }>) => Promise<string | null>;
+        case "published":
+            return "text-green-500";
+        case "draft":
+            return "text-yellow-500";
+        case "archived":
+            return "text-red-500";
+        case "scheduled":
+            return "text-blue-500";
+        default:
+            return "text-gray-500";
     }
 }
 
@@ -93,44 +109,57 @@ interface BlogInfo {
 }
 
 // Group posts by blog
-const groupedPosts = blogInfo.reduce<Record<string, BlogPost[]>>((acc, blog) => {
-    // Get posts for this blog
-    const blogPosts = posts.filter(post => post.url?.includes(blog.url));
+const groupedPosts = blogInfo.reduce<Record<string, BlogPost[]>>(
+    (acc, blog) => {
+        // Get posts for this blog
+        const blogPosts = posts.filter((post) => post.url?.includes(blog.url));
 
-    // Sort posts: Published first, then Draft, then Archived
-    blogPosts.sort((a, b) => {
-        const getStatusOrder = (post: BlogPost) => {
-            if (post.archivedAt && typeof post.archivedAt === 'number' && post.archivedAt !== 0) return 2;  // Archived last
-            if (post.state === 'DRAFT') return 1; // Draft second
-            return 0;  // Published first
-        };
+        // Sort posts: Published first, then Draft, then Archived
+        blogPosts.sort((a, b) => {
+            const getStatusOrder = (post: BlogPost) => {
+                if (
+                    post.archivedAt &&
+                    typeof post.archivedAt === "number" &&
+                    post.archivedAt !== 0
+                )
+                    return 2; // Archived last
+                if (post.state === "DRAFT") return 1; // Draft second
+                return 0; // Published first
+            };
 
-        const aOrder = getStatusOrder(a);
-        const bOrder = getStatusOrder(b);
+            const aOrder = getStatusOrder(a);
+            const bOrder = getStatusOrder(b);
 
-        // First sort by status
-        if (aOrder !== bOrder) {
-            return aOrder - bOrder;
-        }
+            // First sort by status
+            if (aOrder !== bOrder) {
+                return aOrder - bOrder;
+            }
 
-        // Then by name
-        return (a.name || '').localeCompare(b.name || '');
-    });
+            // Then by name
+            return (a.name || "").localeCompare(b.name || "");
+        });
 
-    acc[blog.url] = blogPosts;
-    return acc;
-}, {});
+        acc[blog.url] = blogPosts;
+        return acc;
+    },
+    {},
+);
 
 // Add "No Blog" group for posts that don't match any blog
-const noBlogPosts = posts.filter(post =>
-    !blogInfo.some(blog => post.url?.includes(blog.url))
+const noBlogPosts = posts.filter(
+    (post) => !blogInfo.some((blog) => post.url?.includes(blog.url)),
 );
 
 // Sort "No Blog" posts the same way
 noBlogPosts.sort((a, b) => {
     const getStatusOrder = (post: BlogPost) => {
-        if (post.archivedAt && typeof post.archivedAt === 'number' && post.archivedAt !== 0) return 2;
-        if (post.state === 'DRAFT') return 1;
+        if (
+            post.archivedAt &&
+            typeof post.archivedAt === "number" &&
+            post.archivedAt !== 0
+        )
+            return 2;
+        if (post.state === "DRAFT") return 1;
         return 0;
     };
 
@@ -141,209 +170,342 @@ noBlogPosts.sort((a, b) => {
         return aOrder - bOrder;
     }
 
-    return (a.name || '').localeCompare(b.name || '');
+    return (a.name || "").localeCompare(b.name || "");
 });
 
-groupedPosts['No Blog'] = noBlogPosts;
+groupedPosts["No Blog"] = noBlogPosts;
 
 // Create a Map for tags lookup
-const tagsMap = new Map(tags.map(tag => [tag.id.toString(), tag]));
+const tagsMap = new Map(tags.map((tag) => [tag.id.toString(), tag]));
 ---
 
 <Layout title="HubSpot Site Pages">
     <meta name="access-token" content={accessToken} />
     <main class="container mx-auto max-w-4xl px-4 py-8">
-        <h1 class="text-4xl font-bold mb-4 text-blue-200">HubSpot Blog Posts <span class="text-xl text-blue-500">({posts.length} posts)</span></h1>
-        
-        { Astro.url.searchParams.has('archived') ? (
-            <a href="/blog-posts" class="text-blue-400 hover:text-blue-300 mb-8 block">Hide archived posts</a>
-        ) : (
-            <a href="/blog-posts?archived=true" class="text-blue-400 hover:text-blue-300 mb-8 block">Show archived posts</a>
-        )}
-        
-        {error && <p class="text-red-500 mb-6 p-4 bg-red-100 rounded-lg">{error}</p>}
+        <h1 class="text-4xl font-bold mb-4 text-blue-200">
+            HubSpot Blog Posts <span class="text-xl text-blue-500"
+                >({posts.length} posts)</span>
+        </h1>
 
-        {posts.length === 0 ? (
-            <p class="text-gray-400 text-xl">No pages found. {error ? 'An error occurred while fetching posts.' : ''}</p>
-        ) : (
-            <div class="page-tree-container">
-                <div class="flex space-x-4 mb-4">
-                    <button id="changeSelectedSlugsBtn" class="changeSelectedSlugsBtn bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-4 rounded transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                        Change Selected Slugs
-                    </button>
-                    <button id="changeSelectedTagsBtn" class="changeSelectedTagsBtn bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                        Edit Selected Tags
-                    </button>
-                </div>
+        {
+            Astro.url.searchParams.has("archived") ? (
+                <a
+                    href="/blog-posts"
+                    class="text-blue-400 hover:text-blue-300 mb-8 block"
+                >
+                    Hide archived posts
+                </a>
+            ) : (
+                <a
+                    href="/blog-posts?archived=true"
+                    class="text-blue-400 hover:text-blue-300 mb-8 block"
+                >
+                    Show archived posts
+                </a>
+            )
+        }
 
-                <ul class="space-y-3">
-                    {Object.entries(groupedPosts).map(([blogUrl, posts]) => (
-                        posts.length > 0 && (
-                            <li class="blog-group">
-                                <details class="bg-gray-800 rounded-lg p-4 open">
-                                    <summary class="flex items-center justify-between cursor-pointer">
-                                        <div class="flex items-center">
-                                            <input type="checkbox" class="blog-checkbox custom-checkbox mr-2" data-blog-url={blogUrl} />
-                                            <span class="text-xl font-semibold text-white">{blogUrl}</span>
-                                            <span class="ml-2 text-sm text-blue-400">({posts.length} posts)</span>
-                                        </div>
-                                    </summary>
-                                    <ul class="mt-4 space-y-4">
-                                        {posts.map(post => {
-                                            const status = getStatusLabel(post);
-                                            return (
-                                                <li class="post bg-gray-700 rounded-lg p-4">
-                                                    <div class="flex items-center justify-between">
-                                                        <div class="flex-grow">
-                                                            <div class="flex items-center">
-                                                                <label class="flex items-center cursor-pointer">
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        class="post-checkbox custom-checkbox mr-2 aspect-square"
-                                                                        data-post-id={post.id}
-                                                                        data-template-path={post.templatePath}
-                                                                    />
-                                                                    <h3 class="text-2xl font-semibold text-blue-400 leading-none">
-                                                                        {post.name}
-                                                                    </h3>
-                                                                </label>
-                                                            </div>
-                                                            <div class="mt-2 text-sm flex flex-col gap-2 text-gray-300">
-                                                                <p>URL: {post.url}</p>
-                                                                <div class="flex flex-wrap gap-2 mt-1">
-                                                                    <span class="text-gray-400">Tags:</span>
-                                                                    {post.tagIds?.length ? (
-                                                                        post.tagIds.map(id => {
-                                                                            const tag = tagsMap.get(id.toString());
-                                                                            return (
-                                                                                <span class="px-2 py-1 text-xs bg-gray-600 rounded-full">
-                                                                                    {tag?.name || id}
+        {
+            error && (
+                <p class="text-red-500 mb-6 p-4 bg-red-100 rounded-lg">
+                    {error}
+                </p>
+            )
+        }
+
+        {
+            posts.length === 0 ? (
+                <p class="text-gray-400 text-xl">
+                    No pages found.{" "}
+                    {error ? "An error occurred while fetching posts." : ""}
+                </p>
+            ) : (
+                <div class="page-tree-container">
+                    <div class="flex space-x-4 mb-4">
+                        <button
+                            id="changeSelectedSlugsBtn"
+                            class="changeSelectedSlugsBtn bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-4 rounded transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled
+                        >
+                            Change Selected Slugs
+                        </button>
+                        <button
+                            id="changeSelectedTagsBtn"
+                            class="changeSelectedTagsBtn bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled
+                        >
+                            Edit Selected Tags
+                        </button>
+                    </div>
+
+                    <ul class="space-y-3">
+                        {Object.entries(groupedPosts).map(
+                            ([blogUrl, posts]) =>
+                                posts.length > 0 && (
+                                    <li class="blog-group">
+                                        <details class="bg-gray-800 rounded-lg p-4 open">
+                                            <summary class="flex items-center justify-between cursor-pointer">
+                                                <div class="flex items-center">
+                                                    <input
+                                                        type="checkbox"
+                                                        class="blog-checkbox custom-checkbox mr-2"
+                                                        data-blog-url={blogUrl}
+                                                    />
+                                                    <span class="text-xl font-semibold text-white">
+                                                        {blogUrl}
+                                                    </span>
+                                                    <span class="ml-2 text-sm text-blue-400">
+                                                        ({posts.length} posts)
+                                                    </span>
+                                                </div>
+                                            </summary>
+                                            <ul class="mt-4 space-y-4">
+                                                {posts.map((post) => {
+                                                    const status =
+                                                        getStatusLabel(post);
+                                                    return (
+                                                        <li class="post bg-gray-700 rounded-lg p-4">
+                                                            <div class="flex items-center justify-between">
+                                                                <div class="flex-grow">
+                                                                    <div class="flex items-center">
+                                                                        <label class="flex items-center cursor-pointer">
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                class="post-checkbox custom-checkbox mr-2 aspect-square"
+                                                                                data-post-id={
+                                                                                    post.id
+                                                                                }
+                                                                                data-template-path={
+                                                                                    post.templatePath
+                                                                                }
+                                                                            />
+                                                                            <h3 class="text-2xl font-semibold text-blue-400 leading-none">
+                                                                                {
+                                                                                    post.name
+                                                                                }
+                                                                            </h3>
+                                                                        </label>
+                                                                    </div>
+                                                                    <div class="mt-2 text-sm flex flex-col gap-2 text-gray-300">
+                                                                        <p>
+                                                                            URL:{" "}
+                                                                            {
+                                                                                post.url
+                                                                            }
+                                                                        </p>
+                                                                        <div class="flex flex-wrap gap-2 mt-1">
+                                                                            <span class="text-gray-400">
+                                                                                Tags:
+                                                                            </span>
+                                                                            {post
+                                                                                .tagIds
+                                                                                ?.length ? (
+                                                                                post.tagIds.map(
+                                                                                    (
+                                                                                        id,
+                                                                                    ) => {
+                                                                                        const tag =
+                                                                                            tagsMap.get(
+                                                                                                id.toString(),
+                                                                                            );
+                                                                                        return (
+                                                                                            <span class="px-2 py-1 text-xs bg-gray-600 rounded-full">
+                                                                                                {tag?.name ||
+                                                                                                    id}
+                                                                                            </span>
+                                                                                        );
+                                                                                    },
+                                                                                )
+                                                                            ) : (
+                                                                                <span class="text-gray-500">
+                                                                                    None
                                                                                 </span>
-                                                                            );
-                                                                        })
-                                                                    ) : (
-                                                                        <span class="text-gray-500">None</span>
-                                                                    )}
+                                                                            )}
+                                                                        </div>
+                                                                        <p>
+                                                                            Status:{" "}
+                                                                            <span
+                                                                                class={getStatusClass(
+                                                                                    status,
+                                                                                )}
+                                                                            >
+                                                                                {
+                                                                                    status
+                                                                                }
+                                                                            </span>
+                                                                        </p>
+
+                                                                        {post.archivedAt ? (
+                                                                            <p>
+                                                                                Archived:{" "}
+                                                                                {formatDate(post.archivedAt.toString())}
+                                                                            </p>
+                                                                        ) : null}
+                                                                    </div>
                                                                 </div>
-                                                                <p>Status: <span class={getStatusClass(status)}>{status}</span></p>
-                                                                <p>Created: {formatDate(post.created || '')}</p>
-                                                                <p>Updated: {formatDate(post.updated ? post.updated.toString() : '')}</p>
-                                                                {post.archivedAt && post.archivedAt !== 0 &&
-                                                                    <p>Archived: {formatDate(post.archivedAt.toString())}</p>
-                                                                }
+                                                                <div class="flex flex-col space-y-2 min-w-[150px] ml-12 text-right justify-end">
+                                                                    <button
+                                                                        class="change-slug-btn text-right text-sm text-blue-400 hover:text-blue-300"
+                                                                        data-page-id={
+                                                                            post.id
+                                                                        }
+                                                                        data-current-url={
+                                                                            post.url
+                                                                        }
+                                                                    >
+                                                                        Change
+                                                                        Slug
+                                                                    </button>
+                                                                    <button
+                                                                        class="edit-tags-btn text-right text-sm text-blue-400 hover:text-blue-300"
+                                                                        data-post-id={
+                                                                            post.id
+                                                                        }
+                                                                        data-post-tags={post.tagIds?.join(
+                                                                            ",",
+                                                                        )}
+                                                                    >
+                                                                        Edit
+                                                                        Tags
+                                                                    </button>
+                                                                    <a
+                                                                        href={
+                                                                            post.url
+                                                                        }
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        class="view-live-post-btn text-right text-sm text-blue-400 hover:text-blue-300"
+                                                                    >
+                                                                        View
+                                                                        Live
+                                                                        Post
+                                                                    </a>
+                                                                    <a
+                                                                        href={`https://app.hubspot.com/blog/${portalId}/editor/${post.id}/content`}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        class="edit-in-hubspot-btn text-right text-sm text-blue-400 hover:text-blue-300"
+                                                                    >
+                                                                        Edit in
+                                                                        HubSpot
+                                                                    </a>
+                                                                    {post.archivedAt ? (
+                                                                            <button
+                                                                                class="restore-page-btn text-right text-sm text-blue-400 hover:text-blue-300"
+                                                                                data-page-id={
+                                                                                    post.id
+                                                                                }
+                                                                            >
+                                                                                Restore
+                                                                                Post
+                                                                            </button>
+                                                                        ) : null }
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                        <div class="flex flex-col space-y-2 min-w-[150px] ml-12 text-right justify-end">
-                                                            <button
-                                                                class="change-slug-btn text-right text-sm text-blue-400 hover:text-blue-300"
-                                                                data-page-id={post.id}
-                                                                data-current-url={post.url}
-                                                            >
-                                                                Change Slug
-                                                            </button>
-                                                            <button
-                                                                class="edit-tags-btn text-right text-sm text-blue-400 hover:text-blue-300"
-                                                                data-post-id={post.id}
-                                                                data-post-tags={post.tagIds?.join(',')}
-                                                            >
-                                                                Edit Tags
-                                                            </button>
-                                                            <a
-                                                                href={post.url}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                class="view-live-post-btn text-right text-sm text-blue-400 hover:text-blue-300"
-                                                            >
-                                                                View Live Post
-                                                            </a>
-                                                            <a
-                                                                href={`https://app.hubspot.com/blog/${portalId}/editor/${post.id}/content`}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                class="edit-in-hubspot-btn text-right text-sm text-blue-400 hover:text-blue-300"
-                                                            >
-                                                                Edit in HubSpot
-                                                            </a>
-                                                            {post.archivedAt && post.archivedAt !== 0 && (
-                                                                <button
-                                                                    class="restore-page-btn text-right text-sm text-blue-400 hover:text-blue-300"
-                                                                    data-page-id={post.id}
-                                                                >
-                                                                    Restore Post
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </li>
-                                            );
-                                        })}
-                                    </ul>
-                                </details>
-                            </li>
-                        )
-                    ))}
-                </ul>
-            </div>
-        )}
-        
-        <a href="/" class="inline-block mt-8 bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded transition duration-300">Back to Home</a>
+                                                        </li>
+                                                    );
+                                                })}
+                                            </ul>
+                                        </details>
+                                    </li>
+                                ),
+                        )}
+                    </ul>
+                </div>
+            )
+        }
+
+        <a
+            href="/"
+            class="inline-block mt-8 bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded transition duration-300"
+            >Back to Home</a
+        >
     </main>
 
     <SlugModal />
 
-    <dialog id="bulkTagsModal" class="bg-gray-800 p-6 rounded-lg shadow-xl text-white w-[600px]">
+    <dialog
+        id="bulkTagsModal"
+        class="bg-gray-800 p-6 rounded-lg shadow-xl text-white w-[600px]"
+    >
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-xl font-bold">Edit Tags for Selected Posts</h3>
-            <button class="close-modal-btn text-gray-400 hover:text-white">&times;</button>
+            <button class="close-modal-btn text-gray-400 hover:text-white"
+                >&times;</button
+            >
         </div>
         <div class="space-y-4">
             <div class="flex space-x-4 mb-4">
-                <button id="addTagsBtn" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded active">Add Tags</button>
-                <button id="removeTagsBtn" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded">Remove Tags</button>
+                <button
+                    id="addTagsBtn"
+                    class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded active"
+                    >Add Tags</button
+                >
+                <button
+                    id="removeTagsBtn"
+                    class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded"
+                    >Remove Tags</button
+                >
             </div>
             <div id="newBulkTagSection" class="mb-4 space-y-2">
                 <div class="flex space-x-2">
-                    <input 
-                        type="text" 
-                        id="newBulkTagInput" 
-                        placeholder="New tag name" 
+                    <input
+                        type="text"
+                        id="newBulkTagInput"
+                        placeholder="New tag name"
                         class="flex-1 p-2 bg-gray-700 rounded text-white"
-                    >
-                    <button 
-                        id="addNewBulkTagBtn" 
+                    />
+                    <button
+                        id="addNewBulkTagBtn"
                         class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded"
                     >
                         Add New Tag
                     </button>
                 </div>
-                <div id="newBulkTagError" class="text-red-500 text-sm hidden"></div>
+                <div id="newBulkTagError" class="text-red-500 text-sm hidden">
+                </div>
             </div>
-            <div class="max-h-[400px] overflow-y-auto space-y-2" id="bulkTagsContainer">
+            <div
+                class="max-h-[400px] overflow-y-auto space-y-2"
+                id="bulkTagsContainer"
+            >
                 <!-- Tags will be populated here -->
             </div>
             <div class="flex justify-end space-x-3 mt-4">
-                <button class="close-modal-btn bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded">Cancel</button>
-                <button id="saveBulkTagsBtn" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded">Apply Changes</button>
+                <button
+                    class="close-modal-btn bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded"
+                    >Cancel</button
+                >
+                <button
+                    id="saveBulkTagsBtn"
+                    class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded"
+                    >Apply Changes</button
+                >
             </div>
         </div>
     </dialog>
-    
-    <dialog id="tagsModal" class="bg-gray-800 p-6 rounded-lg shadow-xl text-white w-[500px]">
+
+    <dialog
+        id="tagsModal"
+        class="bg-gray-800 p-6 rounded-lg shadow-xl text-white w-[500px]"
+    >
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-xl font-bold">Edit Tags</h3>
-            <button class="close-modal-btn text-gray-400 hover:text-white">&times;</button>
+            <button class="close-modal-btn text-gray-400 hover:text-white"
+                >&times;</button
+            >
         </div>
         <div class="space-y-4">
             <div class="mb-4 space-y-2">
                 <div class="flex space-x-2">
-                    <input 
-                        type="text" 
-                        id="newTagInput" 
-                        placeholder="New tag name" 
+                    <input
+                        type="text"
+                        id="newTagInput"
+                        placeholder="New tag name"
                         class="flex-1 p-2 bg-gray-700 rounded text-white"
-                    >
-                    <button 
-                        id="addNewTagBtn" 
+                    />
+                    <button
+                        id="addNewTagBtn"
                         class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded"
                     >
                         Add New Tag
@@ -351,18 +513,28 @@ const tagsMap = new Map(tags.map(tag => [tag.id.toString(), tag]));
                 </div>
                 <div id="newTagError" class="text-red-500 text-sm hidden"></div>
             </div>
-            <div class="max-h-[400px] overflow-y-auto space-y-2" id="tagsContainer">
+            <div
+                class="max-h-[400px] overflow-y-auto space-y-2"
+                id="tagsContainer"
+            >
                 <!-- Tags will be populated here -->
             </div>
             <div class="flex justify-end space-x-3 mt-4">
-                <button class="close-modal-btn bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded">Cancel</button>
-                <button id="saveTagsBtn" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded">Save Changes</button>
+                <button
+                    class="close-modal-btn bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded"
+                    >Cancel</button
+                >
+                <button
+                    id="saveTagsBtn"
+                    class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded"
+                    >Save Changes</button
+                >
             </div>
         </div>
     </dialog>
 
-    <blog-info data-info={JSON.stringify(blogInfo)} />
-    <tags-info data-info={JSON.stringify(tags)} />
+    <blog-info data-info={JSON.stringify(blogInfo)}></blog-info>
+    <tags-info data-info={JSON.stringify(tags)}></tags-info>
 </Layout>
 
 <style>
@@ -387,7 +559,7 @@ const tagsMap = new Map(tags.map(tag => [tag.id.toString(), tag]));
     }
 
     .custom-checkbox:checked::after {
-        content: '\2714';
+        content: "\2714";
         color: white;
         font-size: 14px;
         font-weight: bold;
@@ -408,27 +580,36 @@ const tagsMap = new Map(tags.map(tag => [tag.id.toString(), tag]));
 </style>
 
 <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const blogInfo = JSON.parse(document.querySelector('blog-info')?.dataset.info);
-        const tags = JSON.parse(document.querySelector('tags-info')?.dataset.info);
-        
+    document.addEventListener("DOMContentLoaded", () => {
+        const blogInfo = JSON.parse(
+            document.querySelector("blog-info")?.dataset.info,
+        );
+        const tags = JSON.parse(
+            document.querySelector("tags-info")?.dataset.info,
+        );
+
         // Create tagsMap in the client-side code
-        const tagsMap = new Map(tags.map(tag => [tag.id.toString(), tag]));
-        
-        const blogCheckboxes = document.querySelectorAll('.blog-checkbox');
-        const postCheckboxes = document.querySelectorAll('.post-checkbox');
-        const changeSelectedSlugsBtn = document.getElementById('changeSelectedSlugsBtn');
-        const changeSelectedTagsBtn = document.getElementById('changeSelectedTagsBtn');
+        const tagsMap = new Map(tags.map((tag) => [tag.id.toString(), tag]));
+
+        const blogCheckboxes = document.querySelectorAll(".blog-checkbox");
+        const postCheckboxes = document.querySelectorAll(".post-checkbox");
+        const changeSelectedSlugsBtn = document.getElementById(
+            "changeSelectedSlugsBtn",
+        );
+        const changeSelectedTagsBtn = document.getElementById(
+            "changeSelectedTagsBtn",
+        );
 
         // Handle blog checkbox changes
-        blogCheckboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', (e) => {
-                const blogDetails = (e.target).closest('details');
-                const postCheckboxes = blogDetails?.querySelectorAll('.post-checkbox');
-                const isChecked = (e.target).checked;
+        blogCheckboxes.forEach((checkbox) => {
+            checkbox.addEventListener("change", (e) => {
+                const blogDetails = e.target.closest("details");
+                const postCheckboxes =
+                    blogDetails?.querySelectorAll(".post-checkbox");
+                const isChecked = e.target.checked;
 
                 postCheckboxes?.forEach((cb) => {
-                    (cb).checked = isChecked;
+                    cb.checked = isChecked;
                 });
 
                 updateChangeSelectedButtons();
@@ -436,17 +617,21 @@ const tagsMap = new Map(tags.map(tag => [tag.id.toString(), tag]));
         });
 
         // Handle post checkbox changes
-        postCheckboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', (e) => {
-                const blogDetails = (e.target).closest('details');
-                const blogCheckbox = blogDetails?.querySelector('.blog-checkbox');
-                const postCheckboxes = blogDetails?.querySelectorAll('.post-checkbox');
+        postCheckboxes.forEach((checkbox) => {
+            checkbox.addEventListener("change", (e) => {
+                const blogDetails = e.target.closest("details");
+                const blogCheckbox =
+                    blogDetails?.querySelector(".blog-checkbox");
+                const postCheckboxes =
+                    blogDetails?.querySelectorAll(".post-checkbox");
 
                 if (postCheckboxes) {
-                    const allChecked = Array.from(postCheckboxes)
-                        .every((cb) => (cb).checked);
-                    const someChecked = Array.from(postCheckboxes)
-                        .some((cb) => (cb).checked);
+                    const allChecked = Array.from(postCheckboxes).every(
+                        (cb) => cb.checked,
+                    );
+                    const someChecked = Array.from(postCheckboxes).some(
+                        (cb) => cb.checked,
+                    );
 
                     if (blogCheckbox) {
                         blogCheckbox.checked = allChecked;
@@ -458,9 +643,208 @@ const tagsMap = new Map(tags.map(tag => [tag.id.toString(), tag]));
             });
         });
 
+        function updateButtonStates() {
+            const anyChecked = Array.from(postCheckboxes).some(
+                (checkbox) => checkbox.checked,
+            );
+            if (changeSelectedSlugsBtn)
+                changeSelectedSlugsBtn.disabled = !anyChecked;
+        }
+
+        async function handleSlugChange(
+            pages: Array<{ pageId: string; currentUrl: string }>,
+            pattern: string,
+        ) {
+            try {
+                const patternMatch = pattern.match(/#(.+?)#(.*)/);
+                if (!patternMatch) {
+                    throw new Error(
+                        "Invalid pattern format. Pattern should be in format: #regex#replacement",
+                    );
+                }
+
+                const [, regexPattern, replacement] = patternMatch;
+
+                try {
+                    new RegExp(regexPattern);
+                } catch (e) {
+                    throw new Error("Invalid regular expression pattern");
+                }
+
+                const regex = new RegExp(regexPattern);
+                const updates = pages.map((page) => {
+                    if (!page.currentUrl) {
+                        throw new Error(`Missing URL for page ${page.pageId}`);
+                    }
+
+                    try {
+                        const currentPath = new URL(page.currentUrl).pathname;
+                        const newSlug = currentPath
+                            .replace(regex, replacement)
+                            .replace(/\/+/g, "/")
+                            .replace(/\/$/, "")
+                            .replace(/^(?!\/)/, "/");
+
+                        return {
+                            pageId: page.pageId,
+                            newSlug,
+                        };
+                    } catch (e) {
+                        throw new Error(
+                            `Invalid URL format for page ${page.pageId}: ${page.currentUrl}`,
+                        );
+                    }
+                });
+
+                for (const update of updates) {
+                    const response = await fetch(
+                        "/api/blog-posts/update-slug",
+                        {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(update),
+                        },
+                    );
+
+                    if (!response.ok) {
+                        const errorData = await response
+                            .json()
+                            .catch(() => ({}));
+                        throw new Error(
+                            `Failed to update slug for page ${update.pageId}: ${errorData.message || response.statusText}`,
+                        );
+                    }
+                }
+
+                await invalidateCache();
+                window.location.reload();
+            } catch (error) {
+                console.error("Error updating slugs:", error);
+                alert(
+                    "Failed to update slugs: " +
+                        (error instanceof Error
+                            ? error.message
+                            : "Unknown error"),
+                );
+            }
+        }
+
+        async function handleRestorePage(pageId: string) {
+            try {
+                const response = await fetch("/api/blog-posts/restore", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ pageId })
+                });
+
+                if (!response.ok) throw new Error("Failed to restore page");
+
+                await invalidateCache();
+                window.location.reload();
+            } catch (error) {
+                console.error("Error restoring page:", error);
+                alert(
+                    "Failed to restore page: " +
+                        (error instanceof Error
+                            ? error.message
+                            : "Unknown error"),
+                );
+            }
+        }
+
+        changeSelectedSlugsBtn?.addEventListener("click", async () => {
+            const checkedPages = Array.from(postCheckboxes)
+                .filter((checkbox) => checkbox.checked)
+                .map((checkbox) => ({
+                    pageId: checkbox.dataset.pageId,
+                    currentUrl: checkbox.dataset.currentUrl,
+                }))
+                .filter(
+                    (page): page is { pageId: string; currentUrl: string } =>
+                        page.pageId != null && page.currentUrl != null,
+                );
+
+            if (window.openSlugModal && checkedPages.length > 0) {
+                const pattern = await window.openSlugModal(checkedPages);
+                if (pattern) {
+                    await handleSlugChange(checkedPages, pattern);
+                }
+            }
+        });
+
+        // Individual button handlers
+        document.querySelectorAll(".change-template-btn").forEach((btn) => {
+            btn.addEventListener("click", async (e) => {
+                const button = e.currentTarget as HTMLButtonElement;
+                const pageId = button.dataset.pageId;
+                const templatePath = button.dataset.templatePath;
+
+                if (pageId && templatePath && window.openTemplateModal) {
+                    const newTemplatePath = await window.openTemplateModal(
+                        pageId,
+                        templatePath,
+                    );
+                    if (newTemplatePath) {
+                        await handleTemplateChange([pageId], newTemplatePath);
+                    }
+                }
+            });
+        });
+
+        document.querySelectorAll(".change-slug-btn").forEach((btn) => {
+            btn.addEventListener("click", async (e) => {
+                const button = e.currentTarget as HTMLButtonElement;
+                const pageId = button.dataset.pageId;
+                const currentUrl = button.dataset.currentUrl;
+
+                if (!pageId || !currentUrl) {
+                    console.error("Missing required data attributes");
+                    return;
+                }
+
+                if (window.openSlugModal) {
+                    try {
+                        const pattern = await window.openSlugModal([
+                            { pageId, currentUrl },
+                        ]);
+                        if (pattern) {
+                            await handleSlugChange(
+                                [{ pageId, currentUrl }],
+                                pattern,
+                            );
+                        }
+                    } catch (error) {
+                        console.error("Error in slug change process:", error);
+                        alert(
+                            "Failed to change slug: " +
+                                (error instanceof Error
+                                    ? error.message
+                                    : "Unknown error"),
+                        );
+                    }
+                }
+            });
+        });
+
+
+        // Initialize button states
+        updateButtonStates();
+
+        // Restore button handlers
+        document.querySelectorAll(".restore-page-btn").forEach((btn) => {
+            btn.addEventListener("click", async (e) => {
+                const button = e.currentTarget as HTMLButtonElement;
+                const pageId = button.dataset.pageId;
+                if (pageId) {
+                    await handleRestorePage(pageId);
+                }
+            });
+        });
+
         function updateChangeSelectedButtons() {
-            const anyChecked = Array.from(postCheckboxes)
-                .some((cb) => cb.checked);
+            const anyChecked = Array.from(postCheckboxes).some(
+                (cb) => cb.checked,
+            );
 
             if (changeSelectedSlugsBtn) {
                 changeSelectedSlugsBtn.disabled = !anyChecked;
@@ -470,272 +854,39 @@ const tagsMap = new Map(tags.map(tag => [tag.id.toString(), tag]));
             }
         }
 
-        // Handle Change Selected Slugs
-        changeSelectedSlugsBtn?.addEventListener('click', handleChangeSelectedSlugs);
-
-        // Handle individual slug changes
-        document.querySelectorAll('.change-slug-btn').forEach(btn => {
-            btn.addEventListener('click', handleChangeSlug);
-        });
-
-        // Slug Modal Functionality
-        async function handleChangeSlug(event) {
-            const target = event.target;
-            const postId = target.getAttribute('data-page-id');
-            const currentUrl = target.getAttribute('data-current-url');
-
-            if (!postId || !currentUrl) {
-                console.error('Missing post ID or URL');
-                return;
-            }
-
-            window.selectedPages = [{
-                pageId: postId,
-                currentUrl
-            }];
-
-            // Find the blog base URL and extract everything after it
-            const blogBasePath = blogInfo.find(b => currentUrl.includes(b.url))?.url;
-            const fullPath = blogBasePath ?
-                currentUrl.substring(currentUrl.indexOf(blogBasePath) + blogBasePath.length).replace(/^\/+/, '') :
-                currentUrl.split('/').pop() || '';
-
-            const currentUrlsTextarea = document.getElementById('currentUrls');
-            currentUrlsTextarea.value = fullPath;  // Now shows "it/news/replaceplace"
-
-            const modal = document.getElementById('slugModal');
-            modal.showModal();
-
-            setupSlugModal();
-        }
-
-        async function handleChangeSelectedSlugs() {
-            const selectedCheckboxes = document.querySelectorAll('.post-checkbox:checked');
-            const selectedPages = Array.from(selectedCheckboxes)
-                .map(checkbox => {
-                    const postId = checkbox.getAttribute('data-post-id');
-                    const currentUrl = checkbox.closest('.post')?.querySelector('p')?.textContent?.replace('URL: ', '');
-                    return { pageId: postId, currentUrl };
-                })
-                .filter(page =>
-                    page.pageId !== null && page.currentUrl !== undefined
-                );
-
-            if (selectedPages.length === 0) {
-                alert('No posts selected. Please select at least one post.');
-                return;
-            }
-
-            window.selectedPages = selectedPages;
-
-            // Extract paths after blog base URL for each selected post
-            const currentUrlsTextarea = document.getElementById('currentUrls');
-            currentUrlsTextarea.value = selectedPages
-                .map(p => {
-                    const blogBasePath = blogInfo.find(b => p.currentUrl.includes(b.url))?.url;
-                    return blogBasePath ?
-                        p.currentUrl.substring(p.currentUrl.indexOf(blogBasePath) + blogBasePath.length).replace(/^\/+/, '') :
-                        p.currentUrl.split('/').pop() || '';
-                })
-                .join('\n');
-
-            const modal = document.getElementById('slugModal');
-            modal.showModal();
-
-            setupSlugModal();
-        }
-
-        function setupSlugModal() {
-            const modal = document.getElementById('slugModal');
-            const patternInput = document.getElementById('patternInput');
-            const previewUrls = document.getElementById('previewUrls');
-            const applyChangesBtn = document.getElementById('applyChangesBtn');
-            const closeModalBtns = document.querySelectorAll('.close-modal-btn');
-            const copyUrlsBtn = document.querySelector('.copy-urls-btn');
-            const patternBtns = document.querySelectorAll('.pattern-btn');
-
-            // Pattern buttons
-            patternBtns.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const pattern = btn.getAttribute('data-pattern');
-                    if (pattern && patternInput) {
-                        patternInput.value = pattern;
-                        updatePreview();
-                    }
-                });
-            });
-
-            // Close modal buttons
-            closeModalBtns.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    modal.close();
-                });
-            });
-
-            // Copy URLs button
-            copyUrlsBtn?.addEventListener('click', () => {
-                const currentUrls = document.getElementById('currentUrls');
-                currentUrls.select();
-                document.execCommand('copy');
-                (copyUrlsBtn).textContent = 'Copied!';
-                setTimeout(() => {
-                    (copyUrlsBtn).textContent = 'Copy URLs';
-                }, 2000);
-            });
-
-            // Pattern input
-            patternInput?.addEventListener('input', updatePreview);
-
-            function updatePreview() {
-                try {
-                    const patternValue = patternInput.value;
-                    const [, pattern, replacement] = patternValue.match(/#(.+?)#(.*)/) || [];
-
-                    if (!pattern || replacement === undefined) {
-                        previewUrls.value = 'Invalid pattern format. Use #pattern#replacement';
-                        return;
-                    }
-
-                    const regex = new RegExp(pattern);
-                    const previews = window.selectedPages.map(page => {
-                        // Get the blog base URL
-                        const blogBasePath = blogInfo.find(b => page.currentUrl.includes(b.url))?.url;
-                        // Extract everything after the blog base URL
-                        const currentSlug = blogBasePath ?
-                            page.currentUrl.substring(page.currentUrl.indexOf(blogBasePath) + blogBasePath.length).replace(/^\/+/, '') :
-                            page.currentUrl.split('/').pop() || '';
-
-                        // Apply the pattern only to the slug
-                        let newSlug = currentSlug.replace(regex, replacement)
-                            .replace(/^\/|\/$/g, ''); // Only remove leading/trailing slashes, preserve internal ones
-
-                        return `${currentSlug} → ${newSlug}`;
-                    });
-
-                    previewUrls.value = previews.join('\n');
-                } catch (error) {
-                    previewUrls.value = 'Invalid regex pattern: ' + (error instanceof Error ? error.message : 'Unknown error');
-                }
-            }
-
-            // Apply changes button
-            applyChangesBtn?.addEventListener('click', async () => {
-                const patternValue = patternInput.value;
-                const [, pattern, replacement] = patternValue.match(/#(.+?)#(.*)/) || [];
-
-                if (!pattern || replacement === undefined) {
-                    alert('Invalid pattern format. Please use #pattern#replacement format.');
-                    return;
-                }
-
-                try {
-                    const regex = new RegExp(pattern);
-                    const pagesToUpdate = window.selectedPages.filter(page => {
-                        const blogBasePath = blogInfo.find(b => page.currentUrl.includes(b.url))?.url;
-                        const currentSlug = blogBasePath ?
-                            page.currentUrl.substring(page.currentUrl.indexOf(blogBasePath) + blogBasePath.length).replace(/^\/+/, '') :
-                            page.currentUrl.split('/').pop() || '';
-
-                        // Only include pages where the regex matches
-                        return regex.test(currentSlug);
-                    });
-
-                    if (pagesToUpdate.length === 0) {
-                        alert('No matches found for the given pattern. No changes will be made.');
-                        return;
-                    }
-
-                    const results = await Promise.allSettled(
-                        pagesToUpdate.map(async (page) => {
-                            const blogBasePath = blogInfo.find(b => page.currentUrl.includes(b.url))?.url;
-                            const currentSlug = blogBasePath ?
-                                page.currentUrl.substring(page.currentUrl.indexOf(blogBasePath) + blogBasePath.length).replace(/^\/+/, '') :
-                                page.currentUrl.split('/').pop() || '';
-
-                            let newSlug = currentSlug.replace(regex, replacement)
-                                .replace(/^\/|\/$/g, '');
-
-                            const response = await fetch('/api/blog-posts/update-slug', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                },
-                                body: JSON.stringify({
-                                    pageId: page.pageId,
-                                    newSlug
-                                }),
-                            });
-
-                            if (!response.ok) {
-                                const data = await response.json();
-                                throw new Error(data.message || 'Failed to update slug');
-                            }
-
-                            return response.json();
-                        })
-                    );
-
-                    const successful = results.filter(result => result.status === 'fulfilled').length;
-                    const failed = results.filter(result => result.status === 'rejected').length;
-                    const skipped = window.selectedPages.length - pagesToUpdate.length;
-
-                    let message = `Updated slugs for ${successful} posts.`;
-                    if (failed > 0) message += ` Failed to update ${failed} posts.`;
-                    if (skipped > 0) message += ` Skipped ${skipped} posts (no pattern match).`;
-
-                    alert(message);
-                    modal.close();
-
-                    if (successful > 0) {
-                        invalidateCache();
-                        location.reload();
-                    }
-                } catch (error) {
-                    console.error('Error updating slugs:', error);
-                    alert('Invalid regex pattern or error updating slugs. Please try again.');
-                }
-            });
-        }
-
-        async function apiCall(endpoint, data) {
-            const response = await fetch(endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
-            });
-            if (!response.ok) throw new Error('API call failed');
-            return response.json();
-        }
-
         // Handle Edit Tags
-        const tagsModal = document.getElementById('tagsModal');
-        const tagsContainer = document.getElementById('tagsContainer');
-        const saveTagsBtn = document.getElementById('saveTagsBtn');
+        const tagsModal = document.getElementById("tagsModal");
+        const tagsContainer = document.getElementById("tagsContainer");
+        const saveTagsBtn = document.getElementById("saveTagsBtn");
         let currentPostId = null;
 
-        document.querySelectorAll('.edit-tags-btn').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
+        document.querySelectorAll(".edit-tags-btn").forEach((btn) => {
+            btn.addEventListener("click", async (e) => {
                 const target = e.currentTarget;
                 currentPostId = target.dataset.postId || null;
-                const currentTags = target.dataset.postTags?.split(',').filter(Boolean) || [];
-                
+                const currentTags =
+                    target.dataset.postTags?.split(",").filter(Boolean) || [];
+
                 if (!currentPostId) return;
 
                 // Populate modal with all available tags
                 if (tagsContainer) {
                     tagsContainer.innerHTML = Array.from(tagsMap.values())
                         .sort((a, b) => a.name.localeCompare(b.name))
-                        .map(tag => `
+                        .map(
+                            (tag) => `
                             <label class="flex items-center space-x-2 cursor-pointer">
-                                <input 
-                                    type="checkbox" 
+                                <input
+                                    type="checkbox"
                                     class="tag-checkbox custom-checkbox"
                                     value="${tag.id}"
-                                    ${currentTags.includes(tag.id) ? 'checked' : ''}
+                                    ${currentTags.includes(tag.id) ? "checked" : ""}
                                 >
                                 <span class="text-sm">${tag.name}</span>
                             </label>
-                        `).join('');
+                        `,
+                        )
+                        .join("");
                 }
 
                 tagsModal.showModal();
@@ -743,26 +894,27 @@ const tagsMap = new Map(tags.map(tag => [tag.id.toString(), tag]));
         });
 
         // Handle save tags
-        saveTagsBtn?.addEventListener('click', async () => {
+        saveTagsBtn?.addEventListener("click", async () => {
             if (!currentPostId) return;
 
-            const selectedTags = Array.from(document.querySelectorAll('.tag-checkbox:checked'))
-                .map(cb => cb.value);
+            const selectedTags = Array.from(
+                document.querySelectorAll(".tag-checkbox:checked"),
+            ).map((cb) => cb.value);
 
             try {
-                const response = await fetch('/api/blog-posts/update-tags', {
-                    method: 'POST',
+                const response = await fetch("/api/blog-posts/update-tags", {
+                    method: "POST",
                     headers: {
-                        'Content-Type': 'application/json',
+                        "Content-Type": "application/json",
                     },
                     body: JSON.stringify({
                         postId: currentPostId,
-                        tagIds: selectedTags
+                        tagIds: selectedTags,
                     }),
                 });
 
                 if (!response.ok) {
-                    throw new Error('Failed to update tags');
+                    throw new Error("Failed to update tags");
                 }
 
                 tagsModal.close();
@@ -770,15 +922,15 @@ const tagsMap = new Map(tags.map(tag => [tag.id.toString(), tag]));
                 invalidateCache();
                 location.reload();
             } catch (error) {
-                console.error('Error updating tags:', error);
-                alert('Failed to update tags. Please try again.');
+                console.error("Error updating tags:", error);
+                alert("Failed to update tags. Please try again.");
             }
         });
 
         // Handle modal close
-        document.querySelectorAll('.close-modal-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const modal = btn.closest('dialog');
+        document.querySelectorAll(".close-modal-btn").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                const modal = btn.closest("dialog");
                 if (modal) {
                     modal.close();
                 }
@@ -786,100 +938,138 @@ const tagsMap = new Map(tags.map(tag => [tag.id.toString(), tag]));
         });
 
         // Add bulk tags handling
-        const bulkTagsModal = document.getElementById('bulkTagsModal');
-        const bulkTagsContainer = document.getElementById('bulkTagsContainer');
-        const saveBulkTagsBtn = document.getElementById('saveBulkTagsBtn');
-        const addTagsBtn = document.getElementById('addTagsBtn');
-        const removeTagsBtn = document.getElementById('removeTagsBtn');
-        let bulkTagMode = 'add'; // or 'remove'
+        const bulkTagsModal = document.getElementById("bulkTagsModal");
+        const bulkTagsContainer = document.getElementById("bulkTagsContainer");
+        const saveBulkTagsBtn = document.getElementById("saveBulkTagsBtn");
+        const addTagsBtn = document.getElementById("addTagsBtn");
+        const removeTagsBtn = document.getElementById("removeTagsBtn");
+        let bulkTagMode = "add"; // or 'remove'
 
-        document.getElementById('changeSelectedTagsBtn')?.addEventListener('click', () => {
-            const selectedPosts = Array.from(document.querySelectorAll('.post-checkbox:checked'))
-                .map(cb => ({
+        document
+            .getElementById("changeSelectedTagsBtn")
+            ?.addEventListener("click", () => {
+                const selectedPosts = Array.from(
+                    document.querySelectorAll(".post-checkbox:checked"),
+                ).map((cb) => ({
                     id: cb.dataset.postId,
-                    tags: cb.closest('.post')?.querySelector('.edit-tags-btn')?.dataset.postTags?.split(',').filter(Boolean) || []
+                    tags:
+                        cb
+                            .closest(".post")
+                            ?.querySelector(".edit-tags-btn")
+                            ?.dataset.postTags?.split(",")
+                            .filter(Boolean) || [],
                 }));
 
-            if (bulkTagsContainer) {
-                bulkTagsContainer.innerHTML = Array.from(tagsMap.values())
-                    .sort((a, b) => a.name.localeCompare(b.name))
-                    .map(tag => `
+                if (bulkTagsContainer) {
+                    bulkTagsContainer.innerHTML = Array.from(tagsMap.values())
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .map(
+                            (tag) => `
                         <label class="flex items-center space-x-2 cursor-pointer">
-                            <input 
-                                type="checkbox" 
+                            <input
+                                type="checkbox"
                                 class="bulk-tag-checkbox custom-checkbox"
                                 value="${tag.id}"
                             >
                             <span class="text-sm">${tag.name}</span>
                         </label>
-                    `).join('');
-            }
+                    `,
+                        )
+                        .join("");
+                }
 
-            bulkTagsModal.showModal();
-        });
+                bulkTagsModal.showModal();
+            });
 
         // Handle add/remove mode toggle
-        addTagsBtn?.addEventListener('click', () => {
-            bulkTagMode = 'add';
-            addTagsBtn.classList.add('active');
-            removeTagsBtn.classList.remove('active');
+        addTagsBtn?.addEventListener("click", () => {
+            bulkTagMode = "add";
+            addTagsBtn.classList.add("active");
+            removeTagsBtn.classList.remove("active");
         });
 
-        removeTagsBtn?.addEventListener('click', () => {
-            bulkTagMode = 'remove';
-            removeTagsBtn.classList.add('active');
-            addTagsBtn.classList.remove('active');
+        removeTagsBtn?.addEventListener("click", () => {
+            bulkTagMode = "remove";
+            removeTagsBtn.classList.add("active");
+            addTagsBtn.classList.remove("active");
         });
 
         // Handle bulk save
-        saveBulkTagsBtn?.addEventListener('click', async () => {
-            const selectedPosts = Array.from(document.querySelectorAll('.post-checkbox:checked'))
-                .map(cb => ({
-                    id: cb.dataset.postId,
-                    currentTags: cb.closest('.post')?.querySelector('.edit-tags-btn')?.dataset.postTags?.split(',').filter(Boolean) || []
-                }));
+        saveBulkTagsBtn?.addEventListener("click", async () => {
+            const selectedPosts = Array.from(
+                document.querySelectorAll(".post-checkbox:checked"),
+            ).map((cb) => ({
+                id: cb.dataset.postId,
+                currentTags:
+                    cb
+                        .closest(".post")
+                        ?.querySelector(".edit-tags-btn")
+                        ?.dataset.postTags?.split(",")
+                        .filter(Boolean) || [],
+            }));
 
-            const selectedTags = Array.from(document.querySelectorAll('.bulk-tag-checkbox:checked'))
-                .map(cb => cb.value);
+            const selectedTags = Array.from(
+                document.querySelectorAll(".bulk-tag-checkbox:checked"),
+            ).map((cb) => cb.value);
 
             try {
                 const results = await Promise.allSettled(
-                    selectedPosts.map(async post => {
+                    selectedPosts.map(async (post) => {
                         let newTags;
-                        if (bulkTagMode === 'add') {
+                        if (bulkTagMode === "add") {
                             // Add selected tags if they don't exist
-                            newTags = [...new Set([...post.currentTags, ...selectedTags])];
+                            newTags = [
+                                ...new Set([
+                                    ...post.currentTags,
+                                    ...selectedTags,
+                                ]),
+                            ];
                         } else {
                             // Remove selected tags if they exist
-                            newTags = post.currentTags.filter(tag => !selectedTags.includes(tag));
+                            newTags = post.currentTags.filter(
+                                (tag) => !selectedTags.includes(tag),
+                            );
                         }
 
-                        const response = await fetch('/api/blog-posts/update-tags', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
+                        const response = await fetch(
+                            "/api/blog-posts/update-tags",
+                            {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/json",
+                                },
+                                body: JSON.stringify({
+                                    postId: post.id,
+                                    tagIds: newTags,
+                                }),
                             },
-                            body: JSON.stringify({
-                                postId: post.id,
-                                tagIds: newTags
-                            }),
-                        });
+                        );
 
                         if (!response.ok) {
-                            throw new Error(`Failed to update tags for post ${post.id}`);
+                            throw new Error(
+                                `Failed to update tags for post ${post.id}`,
+                            );
                         }
 
                         return response.json();
-                    })
+                    }),
                 );
 
-                const successful = results.filter(result => result.status === 'fulfilled').length;
-                const failed = results.filter(result => result.status === 'rejected').length;
+                const successful = results.filter(
+                    (result) => result.status === "fulfilled",
+                ).length;
+                const failed = results.filter(
+                    (result) => result.status === "rejected",
+                ).length;
 
                 if (failed === 0) {
-                    console.log(`Successfully updated tags for all ${successful} posts!`);
+                    console.log(
+                        `Successfully updated tags for all ${successful} posts!`,
+                    );
                 } else {
-                    console.log(`Updated tags for ${successful} posts. Failed to update ${failed} posts.`);
+                    console.log(
+                        `Updated tags for ${successful} posts. Failed to update ${failed} posts.`,
+                    );
                 }
 
                 bulkTagsModal.close();
@@ -887,51 +1077,52 @@ const tagsMap = new Map(tags.map(tag => [tag.id.toString(), tag]));
                 invalidateCache();
                 location.reload();
             } catch (error) {
-                console.error('Error updating tags:', error);
-                alert('Failed to update tags. Please try again.');
+                console.error("Error updating tags:", error);
+                alert("Failed to update tags. Please try again.");
             }
         });
 
         // Add new tag functionality for single edit
-        const newTagInput = document.getElementById('newTagInput');
-        const addNewTagBtn = document.getElementById('addNewTagBtn');
-        const newTagError = document.getElementById('newTagError');
+        const newTagInput = document.getElementById("newTagInput");
+        const addNewTagBtn = document.getElementById("addNewTagBtn");
+        const newTagError = document.getElementById("newTagError");
 
         async function createNewTag(name) {
-            const response = await fetch('/api/blog-posts/create-tag', {
-                method: 'POST',
+            const response = await fetch("/api/blog-posts/create-tag", {
+                method: "POST",
                 headers: {
-                    'Content-Type': 'application/json',
+                    "Content-Type": "application/json",
                 },
                 body: JSON.stringify({ name }),
             });
 
             if (!response.ok) {
                 const error = await response.json();
-                throw new Error(error.message || 'Failed to create tag');
+                throw new Error(error.message || "Failed to create tag");
             }
 
             return response.json();
         }
 
-        addNewTagBtn?.addEventListener('click', async () => {
+        addNewTagBtn?.addEventListener("click", async () => {
             const name = newTagInput.value.trim();
             if (!name) {
-                newTagError.textContent = 'Tag name is required';
-                newTagError.classList.remove('hidden');
+                newTagError.textContent = "Tag name is required";
+                newTagError.classList.remove("hidden");
                 return;
             }
 
             try {
-                newTagError.classList.add('hidden');
+                newTagError.classList.add("hidden");
                 const newTag = await createNewTag(name);
-                
+
                 // Add new checkbox to the list
-                const newLabel = document.createElement('label');
-                newLabel.className = 'flex items-center space-x-2 cursor-pointer';
+                const newLabel = document.createElement("label");
+                newLabel.className =
+                    "flex items-center space-x-2 cursor-pointer";
                 newLabel.innerHTML = `
-                    <input 
-                        type="checkbox" 
+                    <input
+                        type="checkbox"
                         class="tag-checkbox custom-checkbox"
                         value="${newTag.id}"
                         checked
@@ -939,89 +1130,95 @@ const tagsMap = new Map(tags.map(tag => [tag.id.toString(), tag]));
                     <span class="text-sm">${newTag.name}</span>
                 `;
                 tagsContainer.insertBefore(newLabel, tagsContainer.firstChild);
-                
+
                 // Clear input
-                newTagInput.value = '';
+                newTagInput.value = "";
             } catch (error) {
                 newTagError.textContent = error.message;
-                newTagError.classList.remove('hidden');
+                newTagError.classList.remove("hidden");
             }
         });
 
         // Add new tag functionality for bulk edit
-        const newBulkTagSection = document.getElementById('newBulkTagSection');
-        const newBulkTagInput = document.getElementById('newBulkTagInput');
-        const addNewBulkTagBtn = document.getElementById('addNewBulkTagBtn');
-        const newBulkTagError = document.getElementById('newBulkTagError');
+        const newBulkTagSection = document.getElementById("newBulkTagSection");
+        const newBulkTagInput = document.getElementById("newBulkTagInput");
+        const addNewBulkTagBtn = document.getElementById("addNewBulkTagBtn");
+        const newBulkTagError = document.getElementById("newBulkTagError");
 
         // Show/hide new tag section based on mode
-        addTagsBtn?.addEventListener('click', () => {
-            bulkTagMode = 'add';
-            addTagsBtn.classList.add('active');
-            removeTagsBtn.classList.remove('active');
-            newBulkTagSection.classList.remove('hidden');
+        addTagsBtn?.addEventListener("click", () => {
+            bulkTagMode = "add";
+            addTagsBtn.classList.add("active");
+            removeTagsBtn.classList.remove("active");
+            newBulkTagSection.classList.remove("hidden");
         });
 
-        removeTagsBtn?.addEventListener('click', () => {
-            bulkTagMode = 'remove';
-            removeTagsBtn.classList.add('active');
-            addTagsBtn.classList.remove('active');
-            newBulkTagSection.classList.add('hidden');
+        removeTagsBtn?.addEventListener("click", () => {
+            bulkTagMode = "remove";
+            removeTagsBtn.classList.add("active");
+            addTagsBtn.classList.remove("active");
+            newBulkTagSection.classList.add("hidden");
         });
 
-        addNewBulkTagBtn?.addEventListener('click', async () => {
+        addNewBulkTagBtn?.addEventListener("click", async () => {
             const name = newBulkTagInput.value.trim();
             if (!name) {
-                newBulkTagError.textContent = 'Tag name is required';
-                newBulkTagError.classList.remove('hidden');
+                newBulkTagError.textContent = "Tag name is required";
+                newBulkTagError.classList.remove("hidden");
                 return;
             }
 
             try {
-                newBulkTagError.classList.add('hidden');
+                newBulkTagError.classList.add("hidden");
                 const newTag = await createNewTag(name);
-                
+
                 // Add new checkbox to the list
-                const newLabel = document.createElement('label');
-                newLabel.className = 'flex items-center space-x-2 cursor-pointer';
+                const newLabel = document.createElement("label");
+                newLabel.className =
+                    "flex items-center space-x-2 cursor-pointer";
                 newLabel.innerHTML = `
-                    <input 
-                        type="checkbox" 
+                    <input
+                        type="checkbox"
                         class="bulk-tag-checkbox custom-checkbox"
                         value="${newTag.id}"
                         checked
                     >
                     <span class="text-sm">${newTag.name}</span>
                 `;
-                bulkTagsContainer.insertBefore(newLabel, bulkTagsContainer.firstChild);
-                
+                bulkTagsContainer.insertBefore(
+                    newLabel,
+                    bulkTagsContainer.firstChild,
+                );
+
                 // Clear input
-                newBulkTagInput.value = '';
+                newBulkTagInput.value = "";
             } catch (error) {
                 newBulkTagError.textContent = error.message;
-                newBulkTagError.classList.remove('hidden');
+                newBulkTagError.classList.remove("hidden");
             }
         });
     });
 
+
     async function invalidateCache() {
         try {
-            const accessToken = document.querySelector('meta[name="access-token"]')?.getAttribute('content');
-            
-            await fetch('/api/invalidate-cache', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
+            const accessToken = document
+                .querySelector('meta[name="access-token"]')
+                ?.getAttribute("content");
+
+            await fetch("/api/invalidate-cache", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
                     accessToken,
-                    type: null // This will trigger invalidateAll
-                })
+                    type: null, // This will trigger invalidateAll
+                }),
             });
-            
-            
+
             location.reload();
         } catch (error) {
-            console.error('Failed to clear cache:', error);
-            alert('Failed to clear cache. Please try again.');
+            console.error("Failed to clear cache:", error);
+            alert("Failed to clear cache. Please try again.");
         }
     }
 </script>

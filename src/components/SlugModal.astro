@@ -32,7 +32,6 @@ const { title = 'Change URL Slugs' } = Astro.props;
         <div>
             <label class="block text-sm font-medium mb-1">Current URLs</label>
             <textarea id="currentUrls" class="w-full h-32 p-2 bg-gray-700 rounded" readonly></textarea>
-            <button class="copy-urls-btn mt-1 text-sm text-blue-400 hover:text-blue-300">Copy URLs</button>
         </div>
         <div>
             <label class="block text-sm font-medium mb-1">Preview</label>
@@ -40,7 +39,7 @@ const { title = 'Change URL Slugs' } = Astro.props;
         </div>
         <div class="flex justify-end space-x-3 mt-4">
             <button class="close-modal-btn bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded">Cancel</button>
-            <button id="applyChangesBtn" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded">Apply Changes</button>
+            <button id="applyChangesBtn" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded">Confirm</button>
         </div>
     </div>
 </dialog>
@@ -57,7 +56,7 @@ const { title = 'Change URL Slugs' } = Astro.props;
             selectedPages = pages;
             const currentUrls = document.getElementById('currentUrls') as HTMLTextAreaElement;
             currentUrls.value = pages.map(p => new URL(p.currentUrl).pathname).join('\n');
-            
+
             modal.showModal();
             return new Promise<string | null>((resolve) => {
                 resolvePromise = resolve;
@@ -79,7 +78,6 @@ const { title = 'Change URL Slugs' } = Astro.props;
         const patternButtons = modal.querySelectorAll('.pattern-btn');
         const patternInput = document.getElementById('patternInput') as HTMLInputElement;
         const previewUrls = document.getElementById('previewUrls') as HTMLTextAreaElement;
-        const copyUrlsBtn = modal.querySelector('.copy-urls-btn');
 
         function updatePreview() {
             try {
@@ -102,7 +100,7 @@ const { title = 'Change URL Slugs' } = Astro.props;
                         .replace(/\/$/, '')   // Remove trailing slash
                         .replace(/^(?!\/)/, '/'); // Ensure starts with slash
 
-                    return `${currentPath} → ${newSlug}`;
+                    return `${newSlug}`;
                 });
 
                 previewUrls.value = previews.join('\n');
@@ -131,19 +129,6 @@ const { title = 'Change URL Slugs' } = Astro.props;
                     resolvePromise = null;
                 }
             });
-        });
-
-        copyUrlsBtn?.addEventListener('click', () => {
-            const currentUrls = document.getElementById('currentUrls') as HTMLTextAreaElement;
-            currentUrls.select();
-            document.execCommand('copy');
-
-            const button = copyUrlsBtn as HTMLButtonElement;
-            const originalText = button.textContent || '';
-            button.textContent = 'Copied!';
-            setTimeout(() => {
-                button.textContent = originalText;
-            }, 2000);
         });
 
         // Close on click outside

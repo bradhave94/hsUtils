@@ -74,7 +74,7 @@ function renderFileTree(tree: Record<string, any>): string {
 const fileTree = templates ? buildFileTree(templates) : null;
 ---
 
-<dialog id="templateModal" class="modal bg-gray-900 text-white rounded-lg shadow-xl w-full max-w-4xl flex flex-col h-[90vh] border-none p-0" role="dialog" aria-labelledby="modalTitle" aria-modal="true">
+<dialog id="templateModal" class=" modal bg-gray-900 text-white rounded-lg shadow-xl w-full max-w-4xl flex flex-col h-[90vh] border-none p-0" role="dialog" aria-labelledby="modalTitle" aria-modal="true">
     <div class="p-6 sm:p-8">
         <h2 id="modalTitle" class="text-2xl sm:text-3xl font-bold mb-4 text-orange-500">Change Template</h2>
         <p id="modalDescription" class="mb-4 text-gray-300 text-sm sm:text-base"></p>
@@ -85,8 +85,8 @@ const fileTree = templates ? buildFileTree(templates) : null;
         </ul>
     </div>
     <div class="modal-actions p-4 bg-gray-800 flex justify-end space-x-4 sticky bottom-0">
-        <button id="cancelTemplateChange" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded transition duration-300 text-sm sm:text-base" aria-label="Cancel template change">Cancel</button>
-        <button id="confirmTemplateChange" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded transition duration-300 text-sm sm:text-base" disabled aria-label="Confirm template change">Confirm</button>
+        <button id="cancelTemplateChange" class="close-modal-btn bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded transition duration-300 text-sm sm:text-base" aria-label="Cancel template change">Cancel</button>
+        <button id="confirmTemplateChange" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded" disabled aria-label="Confirm template change">Confirm</button>
     </div>
 </dialog>
 
@@ -101,7 +101,7 @@ const fileTree = templates ? buildFileTree(templates) : null;
         window.openTemplateModal = async (pageIds: string | string[], currentTemplatePath?: string): Promise<string | null> => {
             selectedTemplatePath = null;
             modal.showModal();
-            
+
             // Highlight current template
             const currentTemplateElement = document.querySelector(`[data-template-path="${currentTemplatePath}"]`);
             if (currentTemplateElement) {
@@ -119,14 +119,14 @@ const fileTree = templates ? buildFileTree(templates) : null;
             element.addEventListener('click', (e) => {
                 const target = e.currentTarget as HTMLElement;
                 const templatePath = target.getAttribute('data-template-path');
-                
+
                 // Remove previous selection
-                document.querySelector('.selected-template')?.classList.remove('selected-template');
-                
+                document.querySelector('.selected-template')?.classList.remove('selected-template', 'bg-slate-900', 'bg-opacity-50');
+
                 // Add new selection
-                target.classList.add('selected-template');
+                target.classList.add('selected-template', 'bg-slate-900', 'bg-opacity-50');
                 selectedTemplatePath = templatePath;
-                
+
                 const confirmButton = document.getElementById('confirmTemplateChange') as HTMLButtonElement;
                 confirmButton.disabled = false;
             });
@@ -180,6 +180,11 @@ const fileTree = templates ? buildFileTree(templates) : null;
         border-radius: 0.5rem;
         max-height: 90vh;
         overflow-y: auto;
+        display: none;
+    }
+
+    dialog[open] {
+        display: flex;
     }
 
     .file-tree-container {
