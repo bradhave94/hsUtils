@@ -5,6 +5,9 @@ import { getAuthUrl } from '../lib/auth';
 const authUrl = getAuthUrl();
 const auth = await checkAuth(Astro.cookies);
 const { pathname } = Astro.url;
+
+// Get the cache disabled preference from cookie
+const cacheDisabled = Astro.cookies.get('cache-disabled')?.boolean() || false;
 ---
 
 <nav class="bg-gray-800 text-white p-4">
@@ -20,20 +23,37 @@ const { pathname } = Astro.url;
       <a href="/pages" class="hover:text-orange-500 transition-colors">Pages</a>
       <a href="/blog-posts" class="hover:text-orange-500 transition-colors">Blog Posts</a>
       <a href="/modules" class="hover:text-orange-500 transition-colors">Modules</a>
-      <button
-        id="clearAllCache"
-        class="text-gray-400 hover:text-orange-500 transition-colors h-6 flex items-center"
-        title="Clear Cache"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-        </svg>
-      </button>
+      
+      <div class="flex items-center space-x-2">
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input 
+            type="checkbox" 
+            id="cacheToggle"
+            class="sr-only peer"
+            checked={cacheDisabled}
+          >
+          <div class="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-orange-500"></div>
+          <span class="ml-2 text-sm text-gray-300">Disable Cache</span>
+        </label>
+      </div>
+
+      {!cacheDisabled && (
+        <button
+          id="clearAllCache"
+          class="text-gray-400 hover:text-orange-500 transition-colors h-6 flex items-center"
+          title="Clear Cache"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </button>
+      )}
     </div>
   </div>
 </nav>
 
 <script>
+    // Cache clear button handler
     document.getElementById('clearAllCache')?.addEventListener('click', async () => {
         try {
             const accessToken = document.querySelector('meta[name="access-token"]')?.getAttribute('content');
@@ -47,11 +67,21 @@ const { pathname } = Astro.url;
                 })
             });
             
-            
             location.reload();
         } catch (error) {
             console.error('Failed to clear cache:', error);
             alert('Failed to clear cache. Please try again.');
         }
+    });
+
+    // Cache toggle handler
+    document.getElementById('cacheToggle')?.addEventListener('change', async (e) => {
+        const isDisabled = (e.target as HTMLInputElement).checked;
+        
+        // Set cookie with 30 day expiration
+        document.cookie = `cache-disabled=${isDisabled}; path=/; max-age=${60 * 60 * 24 * 30}`;
+        
+        // Reload the page to apply the new cache setting
+        location.reload();
     });
 </script>

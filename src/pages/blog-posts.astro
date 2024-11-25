@@ -8,12 +8,12 @@ import cache, { CacheType } from '../lib/utils/cache';
 import type { HubSpotBlogPost, BlogTag } from '@/types/hubspot';
 import { formatDate } from '../lib/utils/date';
 
-
 let posts: HubSpotBlogPost[] = [];
 let blogInfo: Array<{ url: string; template_path: string }> = [];
 let error = '';
 
 const { accessToken, refreshToken, isAuthenticated } = await checkAuth(Astro.cookies);
+const cacheDisabled = Astro.cookies.get('cache-disabled')?.boolean() || false;
 
 if (!isAuthenticated) {
     return Astro.redirect('/?error=missing_credentials');
@@ -22,20 +22,25 @@ if (!isAuthenticated) {
 const isArchived = Astro.url.searchParams.has('archived');
 
 try {
-    // Try to get data from cache first
-    posts = cache.get(CacheType.BLOGS, accessToken as string, { archived: isArchived }) || [];
-    blogInfo = cache.get(CacheType.BLOG_INFO, accessToken as string) || [];
+    // Only use cache if not disabled
+    if (!cacheDisabled) {
+        posts = cache.get(CacheType.BLOGS, accessToken as string, { archived: isArchived }) || [];
+        blogInfo = cache.get(CacheType.BLOG_INFO, accessToken as string) || [];
+    }
 
-    // If not in cache, fetch from API
+    // If not in cache or cache is disabled, fetch from API
     if (posts.length === 0) {
         posts = await getBlogPosts(accessToken as string, isArchived, refreshToken);
-        cache.set(CacheType.BLOGS, accessToken as string, posts, { archived: isArchived });
+        if (!cacheDisabled) {
+            cache.set(CacheType.BLOGS, accessToken as string, posts, { archived: isArchived });
+        }
     }
 
     if (blogInfo.length === 0) {
         blogInfo = await getBlogInfo(accessToken as string, refreshToken);
-        console.log(blogInfo);
-        cache.set(CacheType.BLOG_INFO, accessToken as string, blogInfo);
+        if (!cacheDisabled) {
+            cache.set(CacheType.BLOG_INFO, accessToken as string, blogInfo);
+        }
     }
 } catch (err) {
     console.error('Error fetching pages:', err);
