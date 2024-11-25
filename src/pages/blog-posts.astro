@@ -278,6 +278,9 @@ const tagsMap = new Map(tags.map((tag) => [tag.id.toString(), tag]));
                                                                                 data-template-path={
                                                                                     post.templatePath
                                                                                 }
+                                                                                data-current-url={
+                                                                                    post.url
+                                                                                }
                                                                             />
                                                                             <h3 class="text-2xl font-semibold text-blue-400 leading-none">
                                                                                 {
@@ -535,6 +538,7 @@ const tagsMap = new Map(tags.map((tag) => [tag.id.toString(), tag]));
 
     <blog-info data-info={JSON.stringify(blogInfo)}></blog-info>
     <tags-info data-info={JSON.stringify(tags)}></tags-info>
+    <pages-data data-pages={JSON.stringify(posts)}></pages-data>
 </Layout>
 
 <style>
@@ -580,7 +584,12 @@ const tagsMap = new Map(tags.map((tag) => [tag.id.toString(), tag]));
 </style>
 
 <script>
-    document.addEventListener("DOMContentLoaded", () => {
+    import type { HubSpotBlogPost } from '../types/hubspot';
+    import { CacheType } from '../lib/utils/cache';
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const pagesData = document.querySelector('pages-data')?.dataset.pages;
+        const pages: HubSpotBlogPost[] = pagesData ? JSON.parse(pagesData) : [];
         const blogInfo = JSON.parse(
             document.querySelector("blog-info")?.dataset.info,
         );
@@ -678,20 +687,39 @@ const tagsMap = new Map(tags.map((tag) => [tag.id.toString(), tag]));
                     }
 
                     try {
-                        const currentPath = new URL(page.currentUrl).pathname;
-                        const newSlug = currentPath
-                            .replace(regex, replacement)
-                            .replace(/\/+/g, "/")
-                            .replace(/\/$/, "")
-                            .replace(/^(?!\/)/, "/");
+                        const url = new URL(page.currentUrl);
+                        const currentPath = url.pathname;
+
+                        // Find matching blog
+                        const matchingBlog = blogInfo.find(blog => {
+                            const blogUrl = new URL(blog.url);
+                            return currentPath.startsWith(blogUrl.pathname);
+                        });
+
+                        if (!matchingBlog) {
+                            throw new Error(`No matching blog found for URL: ${currentPath}`);
+                        }
+
+                        // Get blog path and clean it
+                        const blogUrl = new URL(matchingBlog.url);
+                        const blogPath = blogUrl.pathname.replace(/\/$/, '');
+
+                        // Remove blog path from current path to get the actual slug
+                        const basePath = currentPath.replace(blogPath, '');
+
+                        // Apply the pattern to get new slug
+                        let newSlug = basePath.replace(regex, replacement)
+                            .replace(/\/+/g, '/') // Remove multiple slashes
+                            .replace(/\/$/, '')   // Remove trailing slash
+                            .replace(/^(?!\/)/, '/'); // Ensure starts with slash
 
                         return {
                             pageId: page.pageId,
-                            newSlug,
+                            newSlug // Don't add blog path back, HubSpot will handle this
                         };
                     } catch (e) {
                         throw new Error(
-                            `Invalid URL format for page ${page.pageId}: ${page.currentUrl}`,
+                            `Invalid URL format for page ${page.pageId}: ${page.currentUrl} - ${e.message}`,
                         );
                     }
                 });
@@ -714,10 +742,50 @@ const tagsMap = new Map(tags.map((tag) => [tag.id.toString(), tag]));
                             `Failed to update slug for page ${update.pageId}: ${errorData.message || response.statusText}`,
                         );
                     }
+
+                    // Get pages data from DOM
+                    const pagesData = document.querySelector('pages-data')?.dataset.pages;
+                    const pages: HubSpotBlogPost[] = pagesData ? JSON.parse(pagesData) : [];
+
+                    // Find the original page data
+                    const originalPage = pages.find(p => p.id === update.pageId);
+                    if (!originalPage) {
+                        throw new Error(`Could not find page with ID ${update.pageId}`);
+                    }
+
+                    // Find matching blog for this post
+                    const matchingBlog = blogInfo.find(blog => {
+                        const blogUrl = new URL(blog.url);
+                        return originalPage.url?.includes(blogUrl.pathname);
+                    });
+
+                    if (!matchingBlog) {
+                        throw new Error(`No matching blog found for post ${update.pageId}`);
+                    }
+
+                    // Parse the original URL and blog URL
+                    const url = new URL(originalPage.url);
+                    const blogUrl = new URL(matchingBlog.url);
+
+                    // Get the post-specific part of the path by removing the blog path
+                    const postPath = url.pathname.replace(blogUrl.pathname, '');
+
+                    // Apply the regex replacement only to the post path
+                    const newPostPath = postPath.replace(regex, replacement)
+                        .replace(/\/+/g, '/') // Remove multiple slashes
+                        .replace(/\/$/, '') // Remove trailing slash
+                        .replace(/^\//, ''); // Remove leading slash for post path
+
+                    // Construct the full URL by combining blog path with new post path
+                    // Make sure blog path ends with slash and post path doesn't start with slash
+                    const blogPath = blogUrl.pathname.endsWith('/') ? blogUrl.pathname : `${blogUrl.pathname}/`;
+                    const newUrl = `${url.protocol}//${url.host}${blogPath}${newPostPath}`;
+
+                    // Update cache for this specific page
+                    await updatePagesInCache([update.pageId], { url: newUrl });
                 }
 
-                await invalidateCache();
-                window.location.reload();
+                location.reload();
             } catch (error) {
                 console.error("Error updating slugs:", error);
                 alert(
@@ -739,8 +807,8 @@ const tagsMap = new Map(tags.map((tag) => [tag.id.toString(), tag]));
 
                 if (!response.ok) throw new Error("Failed to restore page");
 
-                await invalidateCache();
-                window.location.reload();
+                await updatePagesInCache([pageId], { archivedAt: 0 });
+                location.reload();
             } catch (error) {
                 console.error("Error restoring page:", error);
                 alert(
@@ -753,21 +821,18 @@ const tagsMap = new Map(tags.map((tag) => [tag.id.toString(), tag]));
         }
 
         changeSelectedSlugsBtn?.addEventListener("click", async () => {
-            const checkedPages = Array.from(postCheckboxes)
-                .filter((checkbox) => checkbox.checked)
-                .map((checkbox) => ({
-                    pageId: checkbox.dataset.pageId,
-                    currentUrl: checkbox.dataset.currentUrl,
-                }))
-                .filter(
-                    (page): page is { pageId: string; currentUrl: string } =>
-                        page.pageId != null && page.currentUrl != null,
-                );
+            const selectedPosts = Array.from(
+                    document.querySelectorAll(".post-checkbox:checked"),
+                ).map((cb) => ({
+                    pageId: cb.dataset.postId,
+                    currentUrl: cb.dataset.currentUrl,
+                }));
 
-            if (window.openSlugModal && checkedPages.length > 0) {
-                const pattern = await window.openSlugModal(checkedPages);
+            if (window.openSlugModal && selectedPosts.length > 0) {
+                console.log('Opening slug modal');
+                const pattern = await window.openSlugModal(selectedPosts, blogInfo);
                 if (pattern) {
-                    await handleSlugChange(checkedPages, pattern);
+                    await handleSlugChange(selectedPosts, pattern);
                 }
             }
         });
@@ -804,9 +869,10 @@ const tagsMap = new Map(tags.map((tag) => [tag.id.toString(), tag]));
 
                 if (window.openSlugModal) {
                     try {
-                        const pattern = await window.openSlugModal([
-                            { pageId, currentUrl },
-                        ]);
+                        const pattern = await window.openSlugModal(
+                            [{ pageId, currentUrl }],
+                            blogInfo
+                        );
                         if (pattern) {
                             await handleSlugChange(
                                 [{ pageId, currentUrl }],
@@ -919,7 +985,7 @@ const tagsMap = new Map(tags.map((tag) => [tag.id.toString(), tag]));
 
                 tagsModal.close();
 
-                invalidateCache();
+                await updatePagesInCache([currentPostId], { tagIds: selectedTags });
                 location.reload();
             } catch (error) {
                 console.error("Error updating tags:", error);
@@ -1074,7 +1140,9 @@ const tagsMap = new Map(tags.map((tag) => [tag.id.toString(), tag]));
 
                 bulkTagsModal.close();
 
-                invalidateCache();
+                await Promise.all(selectedPosts.map(post =>
+                    updatePagesInCache([post.id], { tagIds: newTags })
+                ));
                 location.reload();
             } catch (error) {
                 console.error("Error updating tags:", error);
@@ -1200,25 +1268,40 @@ const tagsMap = new Map(tags.map((tag) => [tag.id.toString(), tag]));
     });
 
 
-    async function invalidateCache() {
+    async function updatePagesInCache(pageIds: string[], updates: Partial<HubSpotBlogPost>) {
         try {
-            const accessToken = document
-                .querySelector('meta[name="access-token"]')
-                ?.getAttribute("content");
+            const accessToken = document.querySelector('meta[name="access-token"]')?.getAttribute('content');
+            if (!accessToken) return;
 
-            await fetch("/api/invalidate-cache", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    accessToken,
-                    type: null, // This will trigger invalidateAll
-                }),
+            const isArchived = new URLSearchParams(window.location.search).has('archived');
+
+            console.log('Sending cache update request:', {
+                type: CacheType.BLOGS,
+                pageIds,
+                updates,
+                options: { archived: isArchived }
             });
 
-            location.reload();
+            const response = await fetch('/api/cache/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: CacheType.BLOGS,
+                    pageIds,
+                    updates,
+                    options: { archived: isArchived }
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to update cache');
+            }
+
+            const result = await response.json();
+            console.log('Cache update response:', result);
         } catch (error) {
-            console.error("Failed to clear cache:", error);
-            alert("Failed to clear cache. Please try again.");
+            console.error('Failed to update cache:', error);
         }
     }
 </script>

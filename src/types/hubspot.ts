@@ -16,17 +16,17 @@ export interface HubSpotTemplate {
 export interface HubSpotPage {
   id: string;
   name: string;
+  absolute_url: string;
+  templatePath: string;
+  archived: boolean;
   slug: string;
   state: string;
   currentState: string;
   createdAt: string;
   updatedAt: string;
   publishDate: string;
-  archived: boolean;
   archivedAt: string;
-  absolute_url: string;
   url?: string;
-  templatePath: string;
   template_path: string;
 }
 

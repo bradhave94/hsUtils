@@ -45,7 +45,7 @@ class Cache {
     get<T>(type: CacheType, accessToken: string, params: Record<string, unknown> = {}): T | null {
         const key = this.generateKey(type, accessToken, params);
         const entry = this.cache.get(key);
-        
+
         if (!entry) {
             console.log(`🔴 Cache Miss: No data found for ${type}`, { params });
             return null;
@@ -87,7 +87,7 @@ class Cache {
     debug(): void {
         console.log('\n🔍 Cache Debug Info:');
         console.log('Total entries:', this.cache.size);
-        console.log('Approximate memory usage:', 
+        console.log('Approximate memory usage:',
             `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
         for (const [key, entry] of this.cache.entries()) {
             const age = Math.round((Date.now() - entry.timestamp) / 1000);
@@ -95,6 +95,20 @@ class Cache {
         }
         console.log('\n');
     }
+
+    update<T>(type: CacheType, accessToken: string, updater: (data: T) => T, options: Record<string, any> = {}) {
+        const cacheKey = this.generateKey(type, accessToken, options);
+        const existingEntry = this.cache.get(cacheKey);
+
+        if (existingEntry) {
+            const updatedData = updater(existingEntry.data as T);
+            this.cache.set(cacheKey, {
+                data: updatedData,
+                timestamp: Date.now()
+            });
+            console.log(`🔄 Cache: Updated data for ${type}`, { options });
+        }
+    }
 }
 
-export default Cache.getInstance(); 
+export default Cache.getInstance();

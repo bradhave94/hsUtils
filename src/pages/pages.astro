@@ -49,6 +49,7 @@ const pageTree = buildPageTree(pages, groupPages);
 
 <Layout title="HubSpot Site Pages">
   <meta name="access-token" content={accessToken} />
+  <pages-data data-pages={JSON.stringify(pages)}></pages-data>
   <main class="container mx-auto max-w-4xl px-4 py-8">
     <h1 class="text-4xl font-bold mb-4 text-blue-200">
       HubSpot Site Pages <span class="text-xl text-blue-500">({pages.length} pages)</span>
@@ -262,8 +263,15 @@ const pageTree = buildPageTree(pages, groupPages);
 
 <script>
   import type { HubSpotPage } from '../types/hubspot';
+  import { CacheType } from '../lib/utils/cache';
 
   document.addEventListener('DOMContentLoaded', () => {
+    const pagesData = document.querySelector('pages-data')?.dataset.pages;
+    const pages: HubSpotPage[] = pagesData ? JSON.parse(pagesData) : [];
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const isArchived = urlParams.has('archived');
+
     const templateCheckboxes = document.querySelectorAll<HTMLInputElement>('.template-checkbox');
     const pageCheckboxes = document.querySelectorAll<HTMLInputElement>('.page-checkbox');
     const changeSelectedBtn = document.getElementById('changeSelectedBtn') as HTMLButtonElement;
@@ -277,13 +285,50 @@ const pageTree = buildPageTree(pages, groupPages);
       if (changeSelectedSlugsBtn) changeSelectedSlugsBtn.disabled = !anyChecked;
     }
 
-    async function handleTemplateChange(pageIds: string[], newTemplatePath: string) {
+    async function updatePagesInCache(pageIds: string[], updates: Partial<HubSpotPage>) {
       try {
+        const accessToken = document.querySelector('meta[name="access-token"]')?.getAttribute('content');
+        if (!accessToken) return;
+
+        console.log('Sending cache update request:', {
+          type: CacheType.PAGES,
+          pageIds,
+          updates,
+          options: { archived: isArchived }
+        });
+
+        const response = await fetch('/api/cache/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: CacheType.PAGES,
+            pageIds,
+            updates,
+            options: { archived: isArchived }
+          })
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || 'Failed to update cache');
+        }
+
+        const result = await response.json();
+        console.log('Cache update response:', result);
+      } catch (error) {
+        console.error('Failed to update cache:', error);
+      }
+    }
+
+    async function handleTemplateChange(pageIds: string | string[], newTemplatePath: string) {
+      try {
+        const ids = Array.isArray(pageIds) ? pageIds : [pageIds];
+
         const response = await fetch('/api/pages/update-batch', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            inputs: pageIds.map(id => ({
+            inputs: ids.map(id => ({
               id,
               templatePath: newTemplatePath
             }))
@@ -292,7 +337,7 @@ const pageTree = buildPageTree(pages, groupPages);
 
         if (!response.ok) throw new Error('Failed to update template');
 
-        await invalidateCache();
+        await updatePagesInCache(ids, { templatePath: newTemplatePath });
         window.location.reload();
       } catch (error) {
         console.error('Error updating template:', error);
@@ -300,19 +345,40 @@ const pageTree = buildPageTree(pages, groupPages);
       }
     }
 
-    async function handleDomainChange(pageIds: string[], newDomain: string) {
+    async function handleDomainChange(pageIds: string | string[], newDomain: string) {
       try {
-        for (const pageId of pageIds) {
-          const response = await fetch('/api/pages/update-domain', {
+        const ids = Array.isArray(pageIds) ? pageIds : [pageIds];
+        const pagesData = document.querySelector('pages-data')?.dataset.pages;
+        const pages: HubSpotPage[] = pagesData ? JSON.parse(pagesData) : [];
+
+        for (const pageId of ids) {
+          console.log('Updating domain for page:', { pageId, newDomain });
+
+          const response = await fetch('/api/domains/change', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pageId, domain: newDomain })
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              pageId,
+              domain: newDomain
+            })
           });
 
-          if (!response.ok) throw new Error(`Failed to update domain for page ${pageId}`);
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(`Failed to update domain for page ${pageId}: ${errorData.error || response.statusText}`);
+          }
+
+          // Get the page to update its URL in cache
+          const page = pages.find(p => p.id === pageId);
+          if (page) {
+            const currentUrl = new URL(page.absolute_url);
+            const newUrl = `https://${newDomain}${currentUrl.pathname}`;
+            await updatePagesInCache([pageId], { absolute_url: newUrl });
+          }
         }
 
-        await invalidateCache();
         window.location.reload();
       } catch (error) {
         console.error('Error updating domain:', error);
@@ -336,41 +402,41 @@ const pageTree = buildPageTree(pages, groupPages);
         }
 
         const regex = new RegExp(regexPattern);
-        const updates = pages.map(page => {
-          if (!page.currentUrl) {
-            throw new Error(`Missing URL for page ${page.pageId}`);
-          }
+        const updates: Array<{ pageId: string; newSlug: string }> = [];
 
+        for (const page of pages) {
           try {
-            const currentPath = new URL(page.currentUrl).pathname;
-            const newSlug = currentPath.replace(regex, replacement)
+            const url = new URL(page.currentUrl);
+            const currentPath = url.pathname;
+            const newPath = currentPath.replace(regex, replacement)
               .replace(/\/+/g, '/')
               .replace(/\/$/, '')
               .replace(/^(?!\/)/, '/');
 
-            return {
-              pageId: page.pageId,
-              newSlug
-            };
-          } catch (e) {
-            throw new Error(`Invalid URL format for page ${page.pageId}: ${page.currentUrl}`);
-          }
-        });
+            const newUrl = `${url.protocol}//${url.host}${newPath}`;
 
-        for (const update of updates) {
-          const response = await fetch('/api/pages/update-slug', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(update)
-          });
+            const response = await fetch('/api/pages/update-slug', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ pageId: page.pageId, newSlug: newPath })
+            });
 
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(`Failed to update slug for page ${update.pageId}: ${errorData.message || response.statusText}`);
+            if (!response.ok) {
+              const errorData = await response.json().catch(() => ({}));
+              throw new Error(`Failed to update slug for page ${page.pageId}: ${errorData.message || response.statusText}`);
+            }
+
+            updates.push({ pageId: page.pageId, newSlug: newUrl });
+          } catch (error) {
+            console.error(`Error processing URL for page ${page.pageId}:`, error);
+            throw error;
           }
         }
 
-        await invalidateCache();
+        for (const update of updates) {
+          await updatePagesInCache([update.pageId], { absolute_url: update.newSlug });
+        }
+
         window.location.reload();
       } catch (error) {
         console.error('Error updating slugs:', error);
@@ -388,7 +454,7 @@ const pageTree = buildPageTree(pages, groupPages);
 
         if (!response.ok) throw new Error('Failed to restore page');
 
-        await invalidateCache();
+        await updatePagesInCache([pageId], { archived: false });
         window.location.reload();
       } catch (error) {
         console.error('Error restoring page:', error);
@@ -396,7 +462,6 @@ const pageTree = buildPageTree(pages, groupPages);
       }
     }
 
-    // Button event handlers
     changeSelectedBtn?.addEventListener('click', async () => {
       const checkedPages = Array.from(pageCheckboxes)
         .filter(checkbox => checkbox.checked)
@@ -450,7 +515,6 @@ const pageTree = buildPageTree(pages, groupPages);
       }
     });
 
-    // Individual button handlers
     document.querySelectorAll('.change-template-btn').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         const button = e.currentTarget as HTMLButtonElement;
@@ -460,7 +524,7 @@ const pageTree = buildPageTree(pages, groupPages);
         if (pageId && templatePath && window.openTemplateModal) {
           const newTemplatePath = await window.openTemplateModal(pageId, templatePath);
           if (newTemplatePath) {
-            await handleTemplateChange([pageId], newTemplatePath);
+            await handleTemplateChange(pageId, newTemplatePath);
           }
         }
       });
@@ -474,7 +538,7 @@ const pageTree = buildPageTree(pages, groupPages);
         if (pageId && window.openDomainModal) {
           const newDomain = await window.openDomainModal(pageId);
           if (newDomain) {
-            await handleDomainChange([pageId], newDomain);
+            await handleDomainChange(pageId, newDomain);
           }
         }
       });
@@ -505,7 +569,6 @@ const pageTree = buildPageTree(pages, groupPages);
       });
     });
 
-    // Checkbox logic
     templateCheckboxes.forEach(checkbox => {
       checkbox.addEventListener('change', (e) => {
         const templateCheckbox = e.target as HTMLInputElement;
@@ -539,10 +602,8 @@ const pageTree = buildPageTree(pages, groupPages);
       });
     });
 
-    // Initialize button states
     updateButtonStates();
 
-    // Restore button handlers
     document.querySelectorAll('.restore-page-btn').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         const button = e.currentTarget as HTMLButtonElement;
@@ -554,22 +615,4 @@ const pageTree = buildPageTree(pages, groupPages);
       });
     });
   });
-
-  async function invalidateCache() {
-    try {
-      const accessToken = document.querySelector('meta[name="access-token"]')?.getAttribute('content');
-
-      await fetch('/api/invalidate-cache', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          accessToken,
-          type: null
-        })
-      });
-    } catch (error) {
-      console.error('Failed to clear cache:', error);
-      alert('Failed to clear cache. Please try again.');
-    }
-  }
 </script>

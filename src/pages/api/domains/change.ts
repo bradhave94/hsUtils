@@ -19,8 +19,49 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             });
         }
 
-        const body = await request.json();
-        const { pageId, domain } = requestSchema.parse(body);
+        // Log the raw request body for debugging
+        const rawBody = await request.text();
+        console.log('Raw request body:', rawBody);
+
+        // Parse the body only if it's not empty
+        if (!rawBody) {
+            return new Response(JSON.stringify({
+                error: 'Empty request body'
+            }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        let body;
+        try {
+            body = JSON.parse(rawBody);
+        } catch (e) {
+            return new Response(JSON.stringify({
+                error: 'Invalid JSON in request body',
+                rawBody
+            }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        // Validate the parsed body
+        const validatedData = requestSchema.safeParse(body);
+        if (!validatedData.success) {
+            return new Response(JSON.stringify({
+                error: 'Invalid request data',
+                details: validatedData.error.errors
+            }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        const { pageId, domain } = validatedData.data;
+
+        // Log the parsed data
+        console.log('Processing domain change:', { pageId, domain });
 
         await updatePageDomain(accessToken, pageId, domain);
 
@@ -34,7 +75,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     } catch (error) {
         console.error('Error changing domain:', error);
         return new Response(JSON.stringify({
-            error: error instanceof Error ? error.message : 'Failed to update domain'
+            error: error instanceof Error ? error.message : 'Failed to update domain',
+            details: error instanceof Error ? error.stack : undefined
         }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' }
