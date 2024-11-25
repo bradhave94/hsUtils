@@ -7,6 +7,10 @@ const requestSchema = z.object({
     type: z.enum([CacheType.BLOGS, CacheType.PAGES, CacheType.BLOG_INFO, CacheType.PAGE_INFO]).nullable()
 });
 
+export function invalidateAll(accessToken: string) {
+    cache.invalidateAll(accessToken);
+}
+
 export const POST: APIRoute = async ({ request, cookies }) => {
     const accessToken = cookies.get('hubspot_access_token')?.value;
     if (!accessToken) {

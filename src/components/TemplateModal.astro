@@ -21,10 +21,10 @@ if (accessToken) {
 
 function buildFileTree(templates: HubSpotTemplate[]): Record<string, any> {
     const tree = {};
-    templates.forEach(template => {
+    for (const template of templates) {
         const parts = template.path.split('/');
         let currentLevel = tree;
-        parts.forEach((part, index) => {
+        for (const [index, part] of parts.entries()) {
             if (!currentLevel[part]) {
                 if (index === parts.length - 1) {
                     currentLevel[part] = template;
@@ -33,8 +33,8 @@ function buildFileTree(templates: HubSpotTemplate[]): Record<string, any> {
                 }
             }
             currentLevel = currentLevel[part];
-        });
-    });
+        }
+    }
     return tree;
 }
 
@@ -74,128 +74,112 @@ function renderFileTree(tree: Record<string, any>): string {
 const fileTree = templates ? buildFileTree(templates) : null;
 ---
 
-<div id="templateModal" class="modal fixed inset-0 z-50 overflow-hidden bg-black bg-opacity-50 flex items-center justify-center p-4" role="dialog" aria-labelledby="modalTitle" aria-modal="true">
-    <div class="modal-content bg-gray-900 text-white rounded-lg shadow-xl w-full max-w-4xl flex flex-col h-[90vh]">
-        <div class="p-6 sm:p-8">
-            <h2 id="modalTitle" class="text-2xl sm:text-3xl font-bold mb-4 text-orange-500">Change Template</h2>
-            <p id="modalDescription" class="mb-4 text-gray-300 text-sm sm:text-base"></p>
-        </div>
-        <div class="file-tree-container flex-grow overflow-y-auto px-6 sm:px-8" role="tree">
-            <ul class="space-y-3">
-                {fileTree && <Fragment set:html={renderFileTree(fileTree)} />}
-            </ul>
-        </div>
-        <div class="modal-actions p-4 bg-gray-800 flex justify-end space-x-4 sticky bottom-0">
-            <button id="cancelTemplateChange" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded transition duration-300 text-sm sm:text-base" aria-label="Cancel template change">Cancel</button>
-            <button id="confirmTemplateChange" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded transition duration-300 text-sm sm:text-base" disabled aria-label="Confirm template change">Confirm</button>
-        </div>
+<dialog id="templateModal" class="modal bg-gray-900 text-white rounded-lg shadow-xl w-full max-w-4xl flex flex-col h-[90vh] border-none p-0" role="dialog" aria-labelledby="modalTitle" aria-modal="true">
+    <div class="p-6 sm:p-8">
+        <h2 id="modalTitle" class="text-2xl sm:text-3xl font-bold mb-4 text-orange-500">Change Template</h2>
+        <p id="modalDescription" class="mb-4 text-gray-300 text-sm sm:text-base"></p>
     </div>
-</div>
+    <div class="file-tree-container flex-grow overflow-y-auto px-6 sm:px-8" role="tree">
+        <ul class="space-y-3">
+            {fileTree && <Fragment set:html={renderFileTree(fileTree)} />}
+        </ul>
+    </div>
+    <div class="modal-actions p-4 bg-gray-800 flex justify-end space-x-4 sticky bottom-0">
+        <button id="cancelTemplateChange" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded transition duration-300 text-sm sm:text-base" aria-label="Cancel template change">Cancel</button>
+        <button id="confirmTemplateChange" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded transition duration-300 text-sm sm:text-base" disabled aria-label="Confirm template change">Confirm</button>
+    </div>
+</dialog>
 
 <script>
-    let currentPageIds = null;
-    let currentTemplatePath = null;
-    let selectedTemplatePath = null;
+    let resolvePromise: ((value: string | null) => void) | null = null;
+    let selectedTemplatePath: string | null = null;
 
-    function openModal(pageIds, templatePath) {
-    currentPageIds = Array.isArray(pageIds) ? pageIds : [pageIds];
-    currentTemplatePath = templatePath;
-    selectedTemplatePath = null;
+    function initializeTemplateModal() {
+        const modal = document.getElementById('templateModal') as HTMLDialogElement;
+        if (!modal) return;
 
-    const modal = document.getElementById('templateModal');
-    const description = document.getElementById('modalDescription');
-    const confirmButton = document.getElementById('confirmTemplateChange');
+        window.openTemplateModal = async (pageIds: string | string[], currentTemplatePath?: string): Promise<string | null> => {
+            selectedTemplatePath = null;
+            modal.showModal();
+            
+            // Highlight current template
+            const currentTemplateElement = document.querySelector(`[data-template-path="${currentTemplatePath}"]`);
+            if (currentTemplateElement) {
+                currentTemplateElement.classList.add('current-template');
+            }
 
-    if (currentPageIds.length > 1) {
-        description.innerHTML = `Changing template for ${currentPageIds.length} pages.<br>Current template: ${currentTemplatePath}`;
-    } else if (currentPageIds.length === 1) {
-        description.innerHTML = `Changing template for 1 page.<br>Current template: ${currentTemplatePath}`;
-    } else {
-        description.innerHTML = `Select a new template.<br>Current template: ${currentTemplatePath}`;
-    }
+            return new Promise<string | null>((resolve) => {
+                resolvePromise = resolve;
+            });
+        };
 
-    modal.style.display = 'flex';
-    confirmButton.disabled = true;
-
-    // Highlight the current template in the file tree
-    const currentTemplateElement = document.querySelector(`[data-template-path="${currentTemplatePath}"]`);
-    if (currentTemplateElement) {
-        currentTemplateElement.classList.add('current-template');
-    }
-
-    // Add click events to file elements
-    const fileElements = document.querySelectorAll('.file[data-template-path]');
-    fileElements.forEach(fileElement => {
-        fileElement.addEventListener('click', handleTemplateSelection);
-    });
-}
-
-    function closeModal() {
-        const modal = document.getElementById('templateModal');
-        modal.style.display = 'none';
-
-        // Remove highlight from the current template
-        const currentTemplateElement = document.querySelector('.current-template');
-        if (currentTemplateElement) {
-            currentTemplateElement.classList.remove('current-template');
-        }
-
-        // Remove highlight from the selected template
-        const selectedTemplateElement = document.querySelector('.selected-template');
-        if (selectedTemplateElement) {
-            selectedTemplateElement.classList.remove('selected-template');
-        }
-
-        // Remove click events from file elements
+        // Handle template selection
         const fileElements = document.querySelectorAll('.file[data-template-path]');
-        fileElements.forEach(fileElement => {
-            fileElement.removeEventListener('click', handleTemplateSelection);
+        fileElements.forEach(element => {
+            element.addEventListener('click', (e) => {
+                const target = e.currentTarget as HTMLElement;
+                const templatePath = target.getAttribute('data-template-path');
+                
+                // Remove previous selection
+                document.querySelector('.selected-template')?.classList.remove('selected-template');
+                
+                // Add new selection
+                target.classList.add('selected-template');
+                selectedTemplatePath = templatePath;
+                
+                const confirmButton = document.getElementById('confirmTemplateChange') as HTMLButtonElement;
+                confirmButton.disabled = false;
+            });
         });
-    }
 
-    function handleTemplateSelection(e) {
-        const fileElement = e.currentTarget;
-        const templatePath = fileElement.getAttribute('data-template-path');
+        // Handle confirm button
         const confirmButton = document.getElementById('confirmTemplateChange');
+        confirmButton?.addEventListener('click', () => {
+            if (resolvePromise && selectedTemplatePath) {
+                resolvePromise(selectedTemplatePath);
+                resolvePromise = null;
+                modal.close();
+            }
+        });
 
-        // Remove highlight from previously selected template
-        const previouslySelected = document.querySelector('.selected-template');
-        if (previouslySelected) {
-            previouslySelected.classList.remove('selected-template');
-        }
+        // Handle cancel button and close
+        const closeButtons = modal.querySelectorAll('.close-modal-btn');
+        closeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (resolvePromise) {
+                    resolvePromise(null);
+                    resolvePromise = null;
+                }
+                modal.close();
+            });
+        });
 
-        // Highlight the newly selected template
-        fileElement.classList.add('selected-template');
-
-        selectedTemplatePath = templatePath;
-        confirmButton.disabled = false;
+        // Handle click outside
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                if (resolvePromise) {
+                    resolvePromise(null);
+                    resolvePromise = null;
+                }
+                modal.close();
+            }
+        });
     }
 
-    document.getElementById('cancelTemplateChange').addEventListener('click', () => {
-        closeModal();
-        window.resolveTemplateChange(null);
-    });
-
-    document.getElementById('confirmTemplateChange').addEventListener('click', () => {
-        closeModal();
-        window.resolveTemplateChange(selectedTemplatePath);
-    });
-
-    window.openTemplateModal = (pageIds, templatePath) => {
-        return new Promise((resolve) => {
-            window.resolveTemplateChange = resolve;
-            openModal(pageIds, templatePath);
-        });
-    };
+    document.addEventListener('DOMContentLoaded', initializeTemplateModal);
 </script>
 
-<style is:global>
-    .modal {
-        display: none;
+<style>
+    dialog::backdrop {
+        background: rgba(0, 0, 0, 0.5);
     }
 
-    .modal-content {
+    dialog {
+        border: none;
+        padding: 0;
+        border-radius: 0.5rem;
         max-height: 90vh;
+        overflow-y: auto;
     }
 
     .file-tree-container {
@@ -233,7 +217,7 @@ const fileTree = templates ? buildFileTree(templates) : null;
     }
 
     @media (max-width: 640px) {
-        .modal-content {
+        dialog {
             max-height: 95vh;
         }
     }

@@ -35,70 +35,75 @@ const domains: Domain[] = accessToken ? await getDomains(accessToken) : [];
         </div>
         <div class="flex justify-end space-x-3 mt-4">
             <button class="close-modal-btn bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded">Cancel</button>
+            <button id="confirmDomainChange" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded transition duration-300 text-sm sm:text-base" disabled aria-label="Confirm domain change">Confirm</button>
         </div>
     </div>
 </dialog>
 
 <script>
     let resolvePromise: ((value: string | null) => void) | null = null;
+    let selectedDomain: string | null = null;
 
     function initializeDomainModal() {
-        window.openDomainModal = async () => {
-            const modal = document.getElementById('domainModal') as HTMLDialogElement;
-            if (!modal) throw new Error('Domain modal not found');
-            
+        const modal = document.getElementById('domainModal') as HTMLDialogElement;
+        if (!modal) return;
+
+        window.openDomainModal = async (pageId: string): Promise<string | null> => {
+            selectedDomain = null;
             modal.showModal();
             return new Promise<string | null>((resolve) => {
                 resolvePromise = resolve;
             });
         };
-    }
 
-    // Initialize on DOM content loaded
-    document.addEventListener('DOMContentLoaded', () => {
-        initializeDomainModal();
-        
-        const modal = document.getElementById('domainModal') as HTMLDialogElement;
-        if (!modal) return;
-
-        const closeButtons = modal.querySelectorAll('.close-modal-btn');
+        // Handle domain selection
         const domainOptions = modal.querySelectorAll('.domain-option');
-
-        closeButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                modal.close();
-                if (resolvePromise) {
-                    resolvePromise(null);
-                    resolvePromise = null;
-                }
-            });
-        });
-
         domainOptions.forEach(option => {
             option.addEventListener('click', () => {
                 const domain = option.getAttribute('data-domain');
-                if (domain && resolvePromise) {
-                    resolvePromise(domain);
-                    resolvePromise = null;
-                    modal.close();
+                if (domain) {
+                    selectedDomain = domain;
+                    const confirmButton = document.getElementById('confirmDomainChange') as HTMLButtonElement;
+                    confirmButton.disabled = false;
                 }
             });
         });
 
-        // Close on click outside
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
+        // Handle confirm button
+        const confirmButton = document.getElementById('confirmDomainChange');
+        confirmButton?.addEventListener('click', () => {
+            if (resolvePromise && selectedDomain) {
+                resolvePromise(selectedDomain);
+                resolvePromise = null;
                 modal.close();
+            }
+        });
+
+        // Handle cancel and close
+        const closeButtons = modal.querySelectorAll('.close-modal-btn');
+        closeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
                 if (resolvePromise) {
                     resolvePromise(null);
                     resolvePromise = null;
                 }
+                modal.close();
+            });
+        });
+
+        // Handle click outside
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                if (resolvePromise) {
+                    resolvePromise(null);
+                    resolvePromise = null;
+                }
+                modal.close();
             }
         });
-    });
+    }
 
-    // Initialize on custom event
-    document.addEventListener('domain-modal-ready', initializeDomainModal);
+    document.addEventListener('DOMContentLoaded', initializeDomainModal);
 </script>
 
 <style>

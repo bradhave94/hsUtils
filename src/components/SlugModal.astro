@@ -53,7 +53,7 @@ const { title = 'Change URL Slugs' } = Astro.props;
         const modal = document.getElementById('slugModal') as HTMLDialogElement;
         if (!modal) return;
 
-        window.openSlugModal = async (pages: Array<{ pageId: string; currentUrl: string }>) => {
+        window.openSlugModal = async (pages: Array<{ pageId: string; currentUrl: string }>): Promise<string | null> => {
             selectedPages = pages;
             const currentUrls = document.getElementById('currentUrls') as HTMLTextAreaElement;
             currentUrls.value = pages.map(p => new URL(p.currentUrl).pathname).join('\n');
@@ -64,11 +64,21 @@ const { title = 'Change URL Slugs' } = Astro.props;
             });
         };
 
+        // Handle apply changes
+        const applyChangesBtn = document.getElementById('applyChangesBtn');
+        applyChangesBtn?.addEventListener('click', () => {
+            const patternInput = document.getElementById('patternInput') as HTMLInputElement;
+            if (resolvePromise) {
+                resolvePromise(patternInput.value);
+                resolvePromise = null;
+                modal.close();
+            }
+        });
+
         const closeButtons = modal.querySelectorAll('.close-modal-btn');
         const patternButtons = modal.querySelectorAll('.pattern-btn');
         const patternInput = document.getElementById('patternInput') as HTMLInputElement;
         const previewUrls = document.getElementById('previewUrls') as HTMLTextAreaElement;
-        const applyChangesBtn = document.getElementById('applyChangesBtn');
         const copyUrlsBtn = modal.querySelector('.copy-urls-btn');
 
         function updatePreview() {
@@ -136,15 +146,6 @@ const { title = 'Change URL Slugs' } = Astro.props;
             }, 2000);
         });
 
-        applyChangesBtn?.addEventListener('click', () => {
-            const patternValue = patternInput.value;
-            if (resolvePromise) {
-                resolvePromise(patternValue);
-                resolvePromise = null;
-                modal.close();
-            }
-        });
-
         // Close on click outside
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
@@ -159,9 +160,6 @@ const { title = 'Change URL Slugs' } = Astro.props;
 
     // Initialize on DOM content loaded
     document.addEventListener('DOMContentLoaded', initializeSlugModal);
-
-    // Initialize on custom event
-    document.addEventListener('slug-modal-ready', initializeSlugModal);
 </script>
 
 <style>

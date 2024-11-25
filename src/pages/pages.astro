@@ -1,12 +1,16 @@
 ---
 export const prerender = false;
 import Layout from '../layouts/Layout.astro';
-import PageTree from '../components/PageTree.astro';
 import { getSitePages } from '../lib/api/hubspot';
 import { checkAuth } from '../lib/middleware/auth';
 import cache, { CacheType } from '../lib/utils/cache';
+import type { HubSpotPage } from '@/types/hubspot';
+import { formatDate } from '../lib/utils/date';
+import DomainModal from '../components/DomainModal.astro';
+import TemplateModal from '../components/TemplateModal.astro';
+import SlugModal from '../components/SlugModal.astro';
 
-let pages = [];
+let pages: HubSpotPage[] = [];
 let error = '';
 
 const { accessToken, refreshToken, isAuthenticated } = await checkAuth(Astro.cookies);
@@ -19,23 +23,119 @@ const isArchived = Astro.url.searchParams.has('archived');
 
 try {
     // Try to get data from cache first
-    pages = cache.get(CacheType.PAGES, accessToken, { archived: isArchived }) || [];
+    pages = cache.get(CacheType.PAGES, accessToken as string, { archived: isArchived }) || [];
 
     // If not in cache, fetch from API
     if (pages.length === 0) {
-        pages = await getSitePages(accessToken, isArchived, refreshToken);
-        cache.set(CacheType.PAGES, accessToken, pages, { archived: isArchived });
+        pages = await getSitePages(accessToken as string, isArchived, refreshToken);
+        cache.set(CacheType.PAGES, accessToken as string, pages, { archived: isArchived });
     }
 } catch (err) {
     console.error('Error fetching pages:', err);
     error = `Failed to fetch pages: ${err instanceof Error ? err.message : 'Unknown error'}`;
 }
+
+// Define types for the page tree structure
+type PageTemplates = {
+    [key: string]: HubSpotPage[];
+};
+
+type PageFolders = {
+    [key: string]: PageTemplates;
+};
+
+interface PageTreeStructure {
+    published?: PageFolders;
+    draft?: PageFolders;
+    archived?: PageFolders;
+    all?: PageFolders;
+}
+
+type SectionKey = keyof PageTreeStructure;
+
+function buildPageTree(pages: HubSpotPage[]) {
+    const searchParams = new URLSearchParams(Astro.url.search);
+    const groupPages = searchParams.get('group') !== 'false';
+
+    const tree: PageTreeStructure = groupPages
+        ? { published: {}, draft: {}, archived: {} }
+        : { all: {}, archived: {} };
+
+    for (const page of pages) {
+        const templatePath = page.templatePath || 'No Template';
+        const [folder, ...templateParts] = templatePath.split('/');
+        const template = templateParts.join('/') || 'No Template';
+
+        let section: SectionKey = 'all';
+
+        if (groupPages) {
+            if (page.state === 'DRAFT' && !page.archived) {
+                section = 'draft';
+            } else if (page.archived) {
+                section = 'archived';
+            } else {
+                section = 'published';
+            }
+        } else {
+            section = page.archived ? 'archived' : 'all';
+        }
+
+        const sectionData = tree[section];
+        if (sectionData) {
+            if (!sectionData[folder]) {
+                sectionData[folder] = {};
+            }
+            if (!sectionData[folder][template]) {
+                sectionData[folder][template] = [];
+            }
+            sectionData[folder][template].push(page);
+        }
+    }
+
+    // Sort folders alphabetically within each section
+    for (const section of Object.keys(tree) as SectionKey[]) {
+        const sectionData = tree[section];
+        if (sectionData) {
+            tree[section] = Object.fromEntries(
+                Object.entries(sectionData).sort(([a], [b]) => a.localeCompare(b))
+            );
+        }
+    }
+
+    return tree;
+}
+
+function getStatusLabel(page: HubSpotPage): string {
+    if (page.archivedAt && !page.archivedAt.includes('1970')) return 'Archived';
+    switch (page.state) {
+        case 'PUBLISHED': return 'Published';
+        case 'DRAFT': return 'Draft';
+        case 'SCHEDULED': return 'Scheduled';
+        case 'PUBLISHED_OR_SCHEDULED': return 'Published';
+        default: return page.state || 'Draft';
+    }
+}
+
+function getStatusClass(status: string): string {
+    switch (status.toLowerCase()) {
+        case 'published': return 'text-green-500';
+        case 'draft': return 'text-yellow-500';
+        case 'archived': return 'text-red-500';
+        case 'scheduled': return 'text-blue-500';
+        default: return 'text-gray-500';
+    }
+}
+
+const pageTree = buildPageTree(pages);
+const portalId = Astro.cookies.get('hubspot_portal_id')?.value;
+const groupPages = new URLSearchParams(Astro.url.search).get('group') !== 'false';
+const showArchived = Astro.url.searchParams.has('archived');
+const sections = (groupPages ? ['published', 'draft', 'archived'] : ['all', 'archived']) as SectionKey[];
 ---
 
 <Layout title="HubSpot Site Pages">
     <meta name="access-token" content={accessToken} />
     <main class="container mx-auto max-w-4xl px-4 py-8">
-
         <h1 class="text-4xl font-bold mb-4 text-blue-200">HubSpot Site Pages <span class="text-xl text-blue-500">({pages.length} pages)</span></h1>
         
         { Astro.url.searchParams.has('archived') ? (
@@ -46,12 +146,509 @@ try {
         
         {error && <p class="text-red-500 mb-6 p-4 bg-red-100 rounded-lg">{error}</p>}
 
-        {pages.length === 0 ? (
-            <p class="text-gray-400 text-xl">No pages found. {error ? 'An error occurred while fetching pages.' : ''}</p>
-        ) : (
-            <PageTree pages={pages} />
-        )}
+        <div class="page-tree-container">
+            <div class="flex space-x-4 mb-4">
+                <button id="changeSelectedBtn" class="change-selected-btn bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    Change Selected Template
+                </button>
+                <button id="changeSelectedDomainsBtn" class="changeSelectedDomainsBtn bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    Change Selected Domains
+                </button>
+                <button id="changeSelectedSlugsBtn" class="changeSelectedSlugsBtn bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-4 rounded transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    Change Selected Slugs
+                </button>
+            </div>
+
+            {sections.map(section => (
+                (section !== 'archived' || showArchived) && (
+                    <div>
+                        <h2 class="text-3xl font-bold mb-6 mt-8 capitalize text-blue-200">
+                            {section === 'all' ? 'All Pages' : `${section} Pages`}
+                        </h2>
+                        <ul class="space-y-3">
+                            {pageTree[section] && Object.entries(pageTree[section]!).map(([folder, templates]) => (
+                                <li class="folder-group">
+                                    <details class="bg-gray-800 rounded-lg p-4">
+                                        <summary class="flex items-center cursor-pointer">
+                                            <span class="mr-2 text-xl">📁</span>
+                                            <span class="text-xl font-semibold text-white">{folder}</span>
+                                        </summary>
+                                        <ul class="mt-4 space-y-4">
+                                            {Object.entries(templates).map(([templatePath, templatePages]) => (
+                                                <li class="template-group">
+                                                    <details class="bg-gray-700 rounded-lg p-4">
+                                                        <summary class="flex items-center justify-between cursor-pointer">
+                                                            <div class="flex items-center">
+                                                                <input type="checkbox" class="template-checkbox custom-checkbox mr-2" data-template-path={`${folder}/${templatePath}`} />
+                                                                <span class="text-lg font-semibold text-white">{templatePath}</span>
+                                                            </div>
+                                                        </summary>
+                                                        <ul class="mt-4 space-y-4">
+                                                            {templatePages.map(page => {
+                                                                const status = getStatusLabel(page);
+                                                                return (
+                                                                    <li class="page bg-gray-600 rounded-lg p-4">
+                                                                        <div class="flex items-center justify-between">
+                                                                            <div class="flex-grow">
+                                                                                <div class="flex items-center">
+                                                                                    <label class="flex items-center cursor-pointer">
+                                                                                        <input type="checkbox" class="page-checkbox custom-checkbox mr-2" data-page-id={page.id} data-template-path={page.templatePath} />
+                                                                                        <h3 class="text-2xl font-semibold text-blue-400">
+                                                                                            {page.name}
+                                                                                        </h3>
+                                                                                    </label>
+                                                                                </div>
+                                                                                <div class="mt-2 text-sm flex flex-col space-y-1 text-gray-300">
+                                                                                    <p>URL: {page.absolute_url}</p>
+                                                                                    <p>Status: <span class={getStatusClass(status)}>{status}</span></p>
+                                                                                    <p>Created: {formatDate(page.createdAt)}</p>
+                                                                                    <p>Updated: {formatDate(page.updatedAt)}</p>
+                                                                                    {page.archivedAt && !page.archivedAt.includes('1970') && 
+                                                                                        <p>Archived At: {formatDate(page.archivedAt)}</p>
+                                                                                    }
+                                                                                </div>
+                                                                            </div>
+                                                                            <div class="flex flex-col space-y-2 min-w-[150px] ml-12 text-right justify-end">
+                                                                                <button 
+                                                                                    class="change-template-btn text-right text-sm text-blue-400 hover:text-blue-300"
+                                                                                    data-page-id={page.id}
+                                                                                    data-template-path={page.templatePath}
+                                                                                >
+                                                                                    Change Template
+                                                                                </button>
+                                                                                <button 
+                                                                                    class="change-domain-btn text-right text-sm text-blue-400 hover:text-blue-300"
+                                                                                    data-page-id={page.id}
+                                                                                >
+                                                                                    Change Domain
+                                                                                </button>
+                                                                                <button 
+                                                                                    class="change-slug-btn text-right text-sm text-blue-400 hover:text-blue-300"
+                                                                                    data-page-id={page.id}
+                                                                                    data-current-url={page.absolute_url}
+                                                                                >
+                                                                                    Change Slug
+                                                                                </button>
+                                                                                <a 
+                                                                                    href={page.absolute_url}
+                                                                                    target="_blank"
+                                                                                    rel="noopener noreferrer"
+                                                                                    class="view-live-page-btn text-right text-sm text-blue-400 hover:text-blue-300"
+                                                                                >
+                                                                                    View Live Page
+                                                                                </a>
+                                                                                <a 
+                                                                                    href={`https://app.hubspot.com/pages/${portalId}/editor/${page.id}`}
+                                                                                    target="_blank"
+                                                                                    rel="noopener noreferrer"
+                                                                                    class="edit-in-hubspot-btn text-right text-sm text-blue-400 hover:text-blue-300"
+                                                                                >
+                                                                                    Edit in HubSpot
+                                                                                </a>
+                                                                                {page.archived && (
+                                                                                    <button 
+                                                                                        class="restore-page-btn text-right text-sm text-blue-400 hover:text-blue-300"
+                                                                                        data-page-id={page.id}
+                                                                                    >
+                                                                                        Restore Page
+                                                                                    </button>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    </li>
+                                                                );
+                                                            })}
+                                                        </ul>
+                                                    </details>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </details>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )
+            ))}
+        </div>
 
         <a href="/" class="inline-block mt-8 bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded transition duration-300">Back to Home</a>
     </main>
+    <TemplateModal />
+    <DomainModal />
+    <SlugModal />
 </Layout>
+
+<style>
+    .custom-checkbox {
+        appearance: none;
+        -webkit-appearance: none;
+        width: 1.5rem;
+        height: 1.5rem;
+        border: 2px solid #4a5568;
+        border-radius: 0.25rem;
+        background-color: #2d3748;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        margin-right: 0.5rem;
+        transition: all 0.2s ease-in-out;
+    }
+
+    .custom-checkbox:checked {
+        background-color: #553c9a;
+        border-color: #9f7aea;
+    }
+
+    .custom-checkbox:checked::after {
+        content: '\2714';
+        color: white;
+        font-size: 14px;
+        font-weight: bold;
+    }
+
+    .custom-checkbox:focus {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.5);
+    }
+
+    .custom-checkbox:hover {
+        border-color: #4299e1;
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const templateCheckboxes = document.querySelectorAll<HTMLInputElement>('.template-checkbox');
+        const pageCheckboxes = document.querySelectorAll<HTMLInputElement>('.page-checkbox');
+        const changeSelectedBtn = document.getElementById('changeSelectedBtn') as HTMLButtonElement;
+        const changeSelectedDomainsBtn = document.getElementById('changeSelectedDomainsBtn') as HTMLButtonElement;
+        const changeSelectedSlugsBtn = document.getElementById('changeSelectedSlugsBtn') as HTMLButtonElement;
+
+        function updateButtonStates() {
+            const anyChecked = Array.from(pageCheckboxes).some(checkbox => checkbox.checked);
+            if (changeSelectedBtn) changeSelectedBtn.disabled = !anyChecked;
+            if (changeSelectedDomainsBtn) changeSelectedDomainsBtn.disabled = !anyChecked;
+            if (changeSelectedSlugsBtn) changeSelectedSlugsBtn.disabled = !anyChecked;
+        }
+
+        async function handleTemplateChange(pageIds: string[], newTemplatePath: string) {
+            try {
+                console.log('Updating template for pages:', pageIds);
+                const response = await fetch('/api/pages/update-batch', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        inputs: pageIds.map(id => ({
+                            id,
+                            templatePath: newTemplatePath
+                        }))
+                    })
+                });
+
+                
+
+                if (!response.ok) throw new Error('Failed to update template');
+
+                invalidateCache();
+                window.location.reload();
+            } catch (error) {
+                console.error('Error updating template:', error);
+                alert('Failed to update template: ' + (error instanceof Error ? error.message : 'Unknown error'));
+            }
+        }
+
+        async function handleDomainChange(pageIds: string[], newDomain: string) {
+            try {
+                // Send updates one by one using the updatePageDomain function
+                for (const pageId of pageIds) {
+                    const response = await fetch(`/api/pages/update-domain`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            pageId,
+                            domain: newDomain
+                        })
+                    });
+
+                    if (!response.ok) throw new Error(`Failed to update domain for page ${pageId}`);
+                }
+
+                invalidateCache();
+                window.location.reload();
+
+            } catch (error) {
+                console.error('Error updating domain:', error);
+                alert('Failed to update domain: ' + (error instanceof Error ? error.message : 'Unknown error'));
+            }
+        }
+
+        async function handleSlugChange(pages: Array<{ pageId: string; currentUrl: string }>, pattern: string) {
+            try {
+                // Validate pattern format
+                const patternMatch = pattern.match(/#(.+?)#(.*)/);
+                if (!patternMatch) {
+                    throw new Error('Invalid pattern format. Pattern should be in format: #regex#replacement');
+                }
+
+                const [, regexPattern, replacement] = patternMatch;
+                
+                // Validate regex pattern
+                try {
+                    new RegExp(regexPattern);
+                } catch (e) {
+                    throw new Error('Invalid regular expression pattern');
+                }
+
+                const regex = new RegExp(regexPattern);
+                const updates = pages.map(page => {
+                    // Handle cases where currentUrl might be undefined
+                    if (!page.currentUrl) {
+                        throw new Error(`Missing URL for page ${page.pageId}`);
+                    }
+
+                    try {
+                        const currentPath = new URL(page.currentUrl).pathname;
+                        const newSlug = currentPath.replace(regex, replacement)
+                            .replace(/\/+/g, '/') // Remove multiple slashes
+                            .replace(/\/$/, '')   // Remove trailing slash
+                            .replace(/^(?!\/)/, '/'); // Ensure starts with slash
+
+                        return {
+                            pageId: page.pageId,
+                            newSlug
+                        };
+                    } catch (e) {
+                        throw new Error(`Invalid URL format for page ${page.pageId}: ${page.currentUrl}`);
+                    }
+                });
+
+                // Send updates one by one using the update-slug endpoint
+                for (const update of updates) {
+                    const response = await fetch('/api/pages/update-slug', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(update)
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(`Failed to update slug for page ${update.pageId}: ${errorData.message || response.statusText}`);
+                    }
+                }
+
+                invalidateCache();
+                window.location.reload();
+            } catch (error) {
+                console.error('Error updating slugs:', error);
+                alert('Failed to update slugs: ' + (error instanceof Error ? error.message : 'Unknown error'));
+            }
+        }
+
+        // Add restore page handler
+        async function handleRestorePage(pageId: string) {
+            try {
+                const response = await fetch('/api/pages/restore', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ pageId })
+                });
+
+                if (!response.ok) throw new Error('Failed to restore page');
+
+                invalidateCache();
+                window.location.reload();
+            } catch (error) {
+                console.error('Error restoring page:', error);
+                alert('Failed to restore page: ' + (error instanceof Error ? error.message : 'Unknown error'));
+            }
+        }
+
+        // Update the button handlers to use these functions
+        changeSelectedBtn?.addEventListener('click', async () => {
+            const checkedPages = Array.from(pageCheckboxes)
+                .filter(checkbox => checkbox.checked)
+                .map(checkbox => ({
+                    id: checkbox.dataset.pageId,
+                    templatePath: checkbox.dataset.templatePath
+                }));
+
+            if (window.openTemplateModal) {
+                const pageIds = checkedPages.map(page => page.id).filter((id): id is string => id != null);
+                const templatePath = checkedPages[0].templatePath || '';
+                const newTemplatePath = await window.openTemplateModal(pageIds, templatePath);
+                
+                if (newTemplatePath) {
+                    await handleTemplateChange(pageIds, newTemplatePath);
+                }
+            }
+        });
+
+        changeSelectedDomainsBtn?.addEventListener('click', async () => {
+            const checkedPages = Array.from(pageCheckboxes)
+                .filter(checkbox => checkbox.checked)
+                .map(checkbox => checkbox.dataset.pageId)
+                .filter((id): id is string => id != null);
+
+            if (window.openDomainModal && checkedPages.length > 0) {
+                const newDomain = await window.openDomainModal(checkedPages[0]);
+                if (newDomain) {
+                    await handleDomainChange(checkedPages, newDomain);
+                }
+            }
+        });
+
+        changeSelectedSlugsBtn?.addEventListener('click', async () => {
+            const checkedPages = Array.from(pageCheckboxes)
+                .filter(checkbox => checkbox.checked)
+                .map(checkbox => ({
+                    pageId: checkbox.dataset.pageId,
+                    currentUrl: checkbox.dataset.currentUrl
+                }))
+                .filter((page): page is { pageId: string; currentUrl: string } => 
+                    page.pageId != null && page.currentUrl != null);
+
+            if (window.openSlugModal && checkedPages.length > 0) {
+                const pattern = await window.openSlugModal(checkedPages);
+                if (pattern) {
+                    await handleSlugChange(checkedPages, pattern);
+                }
+            }
+        });
+
+        // Update individual button handlers
+        document.querySelectorAll('.change-template-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const button = e.currentTarget as HTMLButtonElement;
+                const pageId = button.dataset.pageId;
+                const templatePath = button.dataset.templatePath || '';
+
+                if (pageId && window.openTemplateModal) {
+                    const newTemplatePath = await window.openTemplateModal(pageId, templatePath);
+                    if (newTemplatePath) {
+                        await handleTemplateChange([pageId], newTemplatePath);
+                    }
+                }
+            });
+        });
+
+        document.querySelectorAll('.change-domain-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const button = e.currentTarget as HTMLButtonElement;
+                const pageId = button.dataset.pageId;
+                
+                if (pageId && window.openDomainModal) {
+                    const newDomain = await window.openDomainModal(pageId);
+                    if (newDomain) {
+                        await handleDomainChange([pageId], newDomain);
+                    }
+                }
+            });
+        });
+
+        document.querySelectorAll('.change-slug-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const button = e.currentTarget as HTMLButtonElement;
+                const pageId = button.dataset.pageId;
+                const currentUrl = button.dataset.currentUrl;
+                
+                if (!pageId || !currentUrl) {
+                    console.error('Missing required data attributes');
+                    return;
+                }
+
+                if (window.openSlugModal) {
+                    try {
+                        const pattern = await window.openSlugModal([{ pageId, currentUrl }]);
+                        if (pattern) {
+                            await handleSlugChange([{ pageId, currentUrl }], pattern);
+                        }
+                    } catch (error) {
+                        console.error('Error in slug change process:', error);
+                        alert('Failed to change slug: ' + (error instanceof Error ? error.message : 'Unknown error'));
+                    }
+                }
+            });
+        });
+
+        // Checkbox logic
+        templateCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', (e) => {
+                const templateCheckbox = e.target as HTMLInputElement;
+                const templateDetails = templateCheckbox.closest('details');
+                if (!templateDetails) return;
+
+                const pageCheckboxes = templateDetails.querySelectorAll<HTMLInputElement>('.page-checkbox');
+                pageCheckboxes.forEach(checkbox => {
+                    checkbox.checked = templateCheckbox.checked;
+                });
+                updateButtonStates();
+            });
+        });
+
+        pageCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', (e) => {
+                const pageCheckbox = e.target as HTMLInputElement;
+                const templateDetails = pageCheckbox.closest('details');
+                if (!templateDetails) return;
+
+                const templateCheckbox = templateDetails.querySelector<HTMLInputElement>('.template-checkbox');
+                const pageCheckboxes = templateDetails.querySelectorAll<HTMLInputElement>('.page-checkbox');
+                
+                const allChecked = Array.from(pageCheckboxes)
+                    .every(checkbox => checkbox.checked);
+                
+                if (templateCheckbox) {
+                    templateCheckbox.checked = allChecked;
+                }
+                
+                updateButtonStates();
+            });
+        });
+
+        // Initialize button states
+        updateButtonStates();
+
+        // Add event listener for restore buttons
+        document.querySelectorAll('.restore-page-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const button = e.currentTarget as HTMLButtonElement;
+                const pageId = button.dataset.pageId;
+                
+                if (pageId) {
+                    await handleRestorePage(pageId);
+                }
+            });
+        });
+    });
+
+    async function invalidateCache() {
+        try {
+            const accessToken = document.querySelector('meta[name="access-token"]')?.getAttribute('content');
+            
+            await fetch('/api/invalidate-cache', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    accessToken,
+                    type: null // This will trigger invalidateAll
+                })
+            });
+            
+            
+            location.reload();
+        } catch (error) {
+            console.error('Failed to clear cache:', error);
+            alert('Failed to clear cache. Please try again.');
+        }
+    }
+</script>
