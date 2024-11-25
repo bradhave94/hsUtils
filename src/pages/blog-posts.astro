@@ -15,7 +15,8 @@ let error = "";
 const { accessToken, refreshToken, isAuthenticated } = await checkAuth(
     Astro.cookies,
 );
-const cacheDisabled = Astro.cookies.get("cache-disabled")?.boolean() || false;
+
+const cacheEnabled = Astro.cookies.get('cache-enabled')?.boolean() ?? false;
 
 if (!isAuthenticated) {
     return Astro.redirect("/?error=missing_credentials");
@@ -24,8 +25,8 @@ if (!isAuthenticated) {
 const isArchived = Astro.url.searchParams.has("archived");
 
 try {
-    // Only use cache if not disabled
-    if (!cacheDisabled) {
+    // Only use cache if enabled
+    if (cacheEnabled) {
         posts =
             cache.get(CacheType.BLOGS, accessToken as string, {
                 archived: isArchived,
@@ -40,7 +41,7 @@ try {
             isArchived,
             refreshToken,
         );
-        if (!cacheDisabled) {
+        if (cacheEnabled) {
             cache.set(CacheType.BLOGS, accessToken as string, posts, {
                 archived: isArchived,
             });
@@ -49,7 +50,7 @@ try {
 
     if (blogInfo.length === 0) {
         blogInfo = await getBlogInfo(accessToken as string, refreshToken);
-        if (!cacheDisabled) {
+        if (cacheEnabled) {
             cache.set(CacheType.BLOG_INFO, accessToken as string, blogInfo);
         }
     }

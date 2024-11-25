@@ -26,10 +26,10 @@ let error = '';
 try {
     if (accessToken) {
         moduleData = await getModule(accessToken, moduleId, refreshToken);
-        
+
         // Store fields separately before removing them
         const fields = moduleData?.fields || [];
-        
+
         // Remove fields we want to hide from the editor
         if (moduleData) {
             const { fields, ...filteredData } = moduleData;
@@ -46,19 +46,21 @@ try {
 
 const formattedJson = moduleData ? JSON.stringify({ ...moduleData, fields: undefined }, null, 2) : '';
 const formattedFields = moduleData?.fields ? JSON.stringify(moduleData.fields, null, 2) : '[]';
+
+const cacheDisabled = Astro.cookies.get('cache-disabled')?.boolean() ?? true;
 ---
 
 <Layout title={`Edit Module: ${moduleData?.name || 'Unknown Module'}`}>
     <meta name="access-token" content={accessToken} />
-    
+
     <main class="container mx-auto max-w-6xl px-4 py-8">
         <div class="flex justify-between items-center mb-6">
             <h1 class="text-4xl font-bold text-blue-200">
                 Edit Module: {moduleData?.name || 'Unknown Module'}
             </h1>
             <div class="flex space-x-4 items-center">
-                <a 
-                    href="/modules" 
+                <a
+                    href="/modules"
                     class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition duration-300"
                 >
                     Back to Modules
@@ -81,7 +83,7 @@ const formattedFields = moduleData?.fields ? JSON.stringify(moduleData.fields, n
         )}
 
         <form id="moduleForm" class="mt-6">
-            <ModuleEditor 
+            <ModuleEditor
                 client:load
                 moduleJson={formattedJson}
                 fieldsJson={formattedFields}
@@ -155,4 +157,4 @@ const formattedFields = moduleData?.fields ? JSON.stringify(moduleData.fields, n
     .monaco-editor .margin {
         background-color: #1e1e1e;
     }
-</style> 
+</style>

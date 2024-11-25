@@ -15,7 +15,7 @@ import { formatDate } from '../lib/utils/date';
 
 const { accessToken, refreshToken, isAuthenticated } = await checkAuth(Astro.cookies);
 const portalId = Astro.cookies.get('hubspot_portal_id')?.value;
-const cacheDisabled = Astro.cookies.get('cache-disabled')?.boolean() || false;
+const cacheEnabled = Astro.cookies.get('cache-enabled')?.boolean() ?? false;
 
 if (!isAuthenticated) {
   return Astro.redirect('/?error=missing_credentials');
@@ -29,13 +29,13 @@ const groupPages = new URLSearchParams(Astro.url.search).get('group') !== 'false
 const sections = (groupPages ? ['published', 'draft', 'archived'] : ['all', 'archived']) as SectionKey[];
 
 try {
-  if (!cacheDisabled) {
+  if (cacheEnabled) {
     pages = cache.get(CacheType.PAGES, accessToken as string, { archived: isArchived }) || [];
   }
 
   if (pages.length === 0) {
     pages = await getSitePages(accessToken as string, isArchived, refreshToken);
-    if (!cacheDisabled) {
+    if (cacheEnabled) {
       cache.set(CacheType.PAGES, accessToken as string, pages, { archived: isArchived });
     }
   }
