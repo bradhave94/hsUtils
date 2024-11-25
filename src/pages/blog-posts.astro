@@ -1,11 +1,8 @@
 ---
 export const prerender = false;
 import Layout from '../layouts/Layout.astro';
-import TemplateModal from '../components/TemplateModal.astro';
-import DomainModal from '../components/DomainModal.astro';
 import SlugModal from '../components/SlugModal.astro';
 import { getBlogPosts, getBlogInfo, getBlogTags } from '../lib/api/hubspot';
-import { API_ENDPOINTS } from '../lib/api/hubspot/constants';
 import { checkAuth } from '../lib/middleware/auth';
 import cache, { CacheType } from '../lib/utils/cache';
 import type { HubSpotBlogPost, BlogTag } from '@/types/hubspot';
@@ -37,6 +34,7 @@ try {
 
     if (blogInfo.length === 0) {
         blogInfo = await getBlogInfo(accessToken as string, refreshToken);
+        console.log(blogInfo);
         cache.set(CacheType.BLOG_INFO, accessToken as string, blogInfo);
     }
 } catch (err) {
@@ -165,12 +163,6 @@ const tagsMap = new Map(tags.map(tag => [tag.id.toString(), tag]));
         ) : (
             <div class="page-tree-container">
                 <div class="flex space-x-4 mb-4">
-                    <button id="changeSelectedBtn" class="change-selected-btn bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                        Change Selected Template
-                    </button>
-                    <button id="changeSelectedDomainsBtn" class="changeSelectedDomainsBtn bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                        Change Selected Domains
-                    </button>
                     <button id="changeSelectedSlugsBtn" class="changeSelectedSlugsBtn bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-4 rounded transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
                         Change Selected Slugs
                     </button>
@@ -238,19 +230,6 @@ const tagsMap = new Map(tags.map(tag => [tag.id.toString(), tag]));
                                                         </div>
                                                         <div class="flex flex-col space-y-2 min-w-[150px] ml-12 text-right justify-end">
                                                             <button
-                                                                class="change-template-btn text-right text-sm text-blue-400 hover:text-blue-300"
-                                                                data-page-id={post.id}
-                                                                data-template-path={post.templatePath}
-                                                            >
-                                                                Change Template
-                                                            </button>
-                                                            <button
-                                                                class="change-domain-btn text-right text-sm text-blue-400 hover:text-blue-300"
-                                                                data-page-id={post.id}
-                                                            >
-                                                                Change Domain
-                                                            </button>
-                                                            <button
                                                                 class="change-slug-btn text-right text-sm text-blue-400 hover:text-blue-300"
                                                                 data-page-id={post.id}
                                                                 data-current-url={post.url}
@@ -305,8 +284,6 @@ const tagsMap = new Map(tags.map(tag => [tag.id.toString(), tag]));
         <a href="/" class="inline-block mt-8 bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded transition duration-300">Back to Home</a>
     </main>
 
-    <TemplateModal />
-    <DomainModal />
     <SlugModal />
 
     <dialog id="bulkTagsModal" class="bg-gray-800 p-6 rounded-lg shadow-xl text-white w-[600px]">
@@ -378,6 +355,9 @@ const tagsMap = new Map(tags.map(tag => [tag.id.toString(), tag]));
             </div>
         </div>
     </dialog>
+
+    <blog-info data-info={JSON.stringify(blogInfo)} />
+    <tags-info data-info={JSON.stringify(tags)} />
 </Layout>
 
 <style>
@@ -422,15 +402,16 @@ const tagsMap = new Map(tags.map(tag => [tag.id.toString(), tag]));
     }
 </style>
 
-<script define:vars={{ blogInfo, tags }}>
+<script>
     document.addEventListener('DOMContentLoaded', () => {
+        const blogInfo = JSON.parse(document.querySelector('blog-info')?.dataset.info);
+        const tags = JSON.parse(document.querySelector('tags-info')?.dataset.info);
+        
         // Create tagsMap in the client-side code
         const tagsMap = new Map(tags.map(tag => [tag.id.toString(), tag]));
         
         const blogCheckboxes = document.querySelectorAll('.blog-checkbox');
         const postCheckboxes = document.querySelectorAll('.post-checkbox');
-        const changeSelectedBtn = document.getElementById('changeSelectedBtn');
-        const changeSelectedDomainsBtn = document.getElementById('changeSelectedDomainsBtn');
         const changeSelectedSlugsBtn = document.getElementById('changeSelectedSlugsBtn');
         const changeSelectedTagsBtn = document.getElementById('changeSelectedTagsBtn');
 
@@ -476,12 +457,6 @@ const tagsMap = new Map(tags.map(tag => [tag.id.toString(), tag]));
             const anyChecked = Array.from(postCheckboxes)
                 .some((cb) => cb.checked);
 
-            if (changeSelectedBtn) {
-                changeSelectedBtn.disabled = !anyChecked;
-            }
-            if (changeSelectedDomainsBtn) {
-                changeSelectedDomainsBtn.disabled = !anyChecked;
-            }
             if (changeSelectedSlugsBtn) {
                 changeSelectedSlugsBtn.disabled = !anyChecked;
             }
@@ -490,137 +465,12 @@ const tagsMap = new Map(tags.map(tag => [tag.id.toString(), tag]));
             }
         }
 
-        // Handle Change Selected Template
-        changeSelectedBtn?.addEventListener('click', async () => {
-            const selectedPostIds = Array.from(document.querySelectorAll('.post-checkbox:checked'))
-                .map(checkbox => checkbox.getAttribute('data-post-id'))
-                .filter(id => id !== null);
-
-            if (selectedPostIds.length === 0) {
-                alert('No posts selected. Please select at least one post.');
-                return;
-            }
-
-            const newTemplatePath = await window.openTemplateModal(selectedPostIds, 'Multiple');
-            if (newTemplatePath) {
-                try {
-                    await apiCall('/api/templates/change-blog', {
-                        inputs: selectedPostIds.map(id => ({
-                            id,
-                            templatePath: newTemplatePath
-                        }))
-                    });
-                    alert('Templates updated successfully!');
-
-                    invalidateCache();
-                    location.reload();
-                } catch (error) {
-                    console.error('Error updating templates:', error);
-                    alert('Failed to update templates. Please try again.');
-                }
-            }
-        });
-
-        // Handle Change Selected Domains
-        changeSelectedDomainsBtn?.addEventListener('click', async () => {
-            const selectedPostIds = Array.from(document.querySelectorAll('.post-checkbox:checked'))
-                .map(checkbox => checkbox.getAttribute('data-post-id'))
-                .filter(id => id !== null);
-
-            if (selectedPostIds.length === 0) {
-                alert('No posts selected. Please select at least one post.');
-                return;
-            }
-
-            try {
-                const newDomain = await window.openDomainModal('multiple');
-                if (newDomain) {
-                    const results = await Promise.allSettled(
-                        selectedPostIds.map(async (postId) => {
-                            const response = await fetch('/api/domains/change', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                },
-                                body: JSON.stringify({
-                                    pageId: postId,
-                                    domain: newDomain
-                                }),
-                            });
-
-                            if (!response.ok) {
-                                const data = await response.json();
-                                throw new Error(data.message || 'Failed to update domain');
-                            }
-
-                            return response.json();
-                        })
-                    );
-
-                    const successful = results.filter(result => result.status === 'fulfilled').length;
-                    const failed = results.filter(result => result.status === 'rejected').length;
-
-                    if (failed === 0) {
-                        alert(`Successfully updated domain for all ${successful} posts!`);
-                    } else {
-                        alert(`Updated domain for ${successful} posts. Failed to update ${failed} posts.`);
-                    }
-
-                    invalidateCache();
-                    location.reload();
-                }
-            } catch (error) {
-                console.error('Error updating domains:', error);
-                alert('An error occurred while updating domains. Please try again.');
-            }
-        });
-
         // Handle Change Selected Slugs
         changeSelectedSlugsBtn?.addEventListener('click', handleChangeSelectedSlugs);
 
         // Handle individual slug changes
         document.querySelectorAll('.change-slug-btn').forEach(btn => {
             btn.addEventListener('click', handleChangeSlug);
-        });
-
-        // Handle individual domain changes
-        document.querySelectorAll('.change-domain-btn').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                const target = e.target;
-                const postId = target.getAttribute('data-page-id');
-
-                if (!postId) {
-                    console.error('No post ID found');
-                    return;
-                }
-
-                try {
-                    const newDomain = await window.openDomainModal(postId);
-                    if (newDomain) {
-                        const response = await fetch('/api/domains/change', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                pageId: postId,
-                                domain: newDomain
-                            }),
-                        });
-
-                        if (!response.ok) {
-                            const data = await response.json();
-                            throw new Error(data.message || 'Failed to update domain');
-                        }
-
-                        invalidateCache();
-                        location.reload();
-                    }
-                } catch (error) {
-                    console.error('Error updating domain:', error);
-                    alert(error instanceof Error ? error.message : 'Failed to update domain. Please try again.');
-                }
-            });
         });
 
         // Slug Modal Functionality

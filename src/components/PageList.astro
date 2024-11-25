@@ -1,0 +1,93 @@
+---
+import type { HubSpotPage } from '../types/hubspot';
+import { formatDate } from '../lib/utils/date';
+import { getPageStatus } from '../utils/page-helpers';
+
+interface Props {
+  pages: HubSpotPage[];
+  portalId: string;
+}
+
+const { pages, portalId } = Astro.props;
+---
+
+{pages.map(page => {
+  const status = getPageStatus(page);
+  return (
+    <li class="page bg-gray-600 rounded-lg p-4">
+      <div class="flex items-center justify-between">
+        <div class="flex-grow">
+          <div class="flex items-center">
+            <label class="flex items-center cursor-pointer">
+              <input 
+                type="checkbox" 
+                class="page-checkbox custom-checkbox mr-2" 
+                data-page-id={page.id} 
+                data-template-path={page.templatePath}
+                data-current-url={page.absolute_url}
+              />
+              <h3 class="text-2xl font-semibold text-blue-400">
+                {page.name}
+              </h3>
+            </label>
+          </div>
+          <div class="mt-2 text-sm flex flex-col space-y-1 text-gray-300">
+            <p>URL: {page.absolute_url}</p>
+            <p>Status: <span class={status.className}>{status.label}</span></p>
+            <p>Created: {formatDate(page.createdAt)}</p>
+            <p>Updated: {formatDate(page.updatedAt)}</p>
+            {page.archivedAt && !page.archivedAt.includes('1970') && 
+              <p>Archived At: {formatDate(page.archivedAt)}</p>
+            }
+          </div>
+        </div>
+        <div class="flex flex-col space-y-2 min-w-[150px] ml-12 text-right justify-end">
+          <button 
+            class="change-template-btn text-right text-sm text-blue-400 hover:text-blue-300"
+            data-page-id={page.id}
+            data-template-path={page.templatePath}
+          >
+            Change Template
+          </button>
+          <button 
+            class="change-domain-btn text-right text-sm text-blue-400 hover:text-blue-300"
+            data-page-id={page.id}
+          >
+            Change Domain
+          </button>
+          <button 
+            class="change-slug-btn text-right text-sm text-blue-400 hover:text-blue-300"
+            data-page-id={page.id}
+            data-current-url={page.absolute_url}
+          >
+            Change Slug
+          </button>
+          <a 
+            href={page.absolute_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="view-live-page-btn text-right text-sm text-blue-400 hover:text-blue-300"
+          >
+            View Live Page
+          </a>
+          <a 
+            href={`https://app.hubspot.com/pages/${portalId}/editor/${page.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="edit-in-hubspot-btn text-right text-sm text-blue-400 hover:text-blue-300"
+          >
+            Edit in HubSpot
+          </a>
+          {page.archived && (
+            <button 
+              class="restore-page-btn text-right text-sm text-blue-400 hover:text-blue-300"
+              data-page-id={page.id}
+            >
+              Restore Page
+            </button>
+          )}
+        </div>
+      </div>
+    </li>
+  );
+})}

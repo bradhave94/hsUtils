@@ -45,6 +45,7 @@ export async function getBlogPosts(accessToken: string, archived = false, refres
 export async function getBlogInfo(accessToken: string, refreshToken?: string): Promise<Array<{ url: string; template_path: string }>> {
   const client = new ApiClient(accessToken);
   const response: HubSpotBlogInfo = await client.get(API_ENDPOINTS.blogs.info, refreshToken);
+  console.log(response);
   return response.objects.map(blog => ({
     url: blog.absolute_url,
     template_path: blog.item_template_path

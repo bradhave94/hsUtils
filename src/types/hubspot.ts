@@ -54,7 +54,6 @@ export interface HubSpotBlogTags {
 export interface BlogTag {
   id: string;
   name: string;
-  slug: string;
   created: string;
   updated: string;
   deletedAt?: string;
