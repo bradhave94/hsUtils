@@ -31,7 +31,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     if (!currentItems) {
       console.log('Cache update: No existing cache data found');
-      return new Response(JSON.stringify({ error: 'Cache miss' }), { status: 404 });
+      return new Response(JSON.stringify({ message: 'Cache empty, no update performed' }), { status: 200 });
     }
 
     const updatedItems = currentItems.map(item => {
