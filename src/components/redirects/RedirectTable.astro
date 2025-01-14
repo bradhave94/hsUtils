@@ -151,7 +151,15 @@ interface Filters {
       </thead>
       <tbody id="redirectTableBody" class="divide-y divide-gray-700">
         <tr>
-          <td colspan="7" class="px-4 py-3 text-center text-gray-400">Loading...</td>
+          <td colspan="7" class="px-4 py-8 text-center text-gray-400">
+            <div class="flex flex-col items-center justify-center">
+              <svg class="animate-spin h-8 w-8 text-orange-500 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span class="text-sm">Loading redirects...</span>
+            </div>
+          </td>
         </tr>
       </tbody>
     </table>
@@ -231,9 +239,13 @@ interface Filters {
         </button>
         <button
           id="applyChangesBtn"
-          class="px-4 py-2 text-sm font-medium text-white bg-orange-600 border border-transparent rounded-md hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+          class="px-4 py-2 text-sm font-medium text-white bg-orange-600 border border-transparent rounded-md hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
         >
-          Apply Changes
+          <svg id="applySpinner" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span id="applyButtonText">Apply Changes</span>
         </button>
       </div>
     </div>
@@ -291,6 +303,24 @@ interface Filters {
   let filteredRedirects: any[] = [];
 
   async function loadRedirects() {
+    const tbody = document.getElementById('redirectTableBody');
+    if (!tbody) return;
+
+    // Show loading state
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" class="px-4 py-8 text-center text-gray-400">
+          <div class="flex flex-col items-center justify-center">
+            <svg class="animate-spin h-8 w-8 text-orange-500 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span class="text-sm">Loading redirects...</span>
+          </div>
+        </td>
+      </tr>
+    `;
+
     try {
       let allRedirects: any[] = [];
       let hasMore = true;
@@ -326,6 +356,19 @@ interface Filters {
       applyFilters();
     } catch (error) {
       console.error('Error loading redirects:', error);
+      // Show error state
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="7" class="px-4 py-8 text-center text-red-400">
+            <div class="flex flex-col items-center justify-center">
+              <svg class="h-8 w-8 text-red-500 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <span class="text-sm">Failed to load redirects. Please try again.</span>
+            </div>
+          </td>
+        </tr>
+      `;
     }
   }
 
@@ -619,7 +662,6 @@ interface Filters {
       const patternValue = patternInput.value;
       const selectedUrlType = document.querySelector('input[name="urlType"]:checked') as HTMLInputElement;
       const urlType = selectedUrlType?.value || 'source';
-      console.log('Updating preview with pattern:', patternValue, 'for URL type:', urlType);
 
       if (!patternValue) {
         previewUrls.value = '';
@@ -635,20 +677,17 @@ interface Filters {
 
       const regex = new RegExp(pattern);
       const selectedRedirects = getSelectedRedirects();
-      console.log('Selected redirects:', selectedRedirects);
 
       const previews = selectedRedirects.map(redirect => {
         // Choose which URL to edit based on the selected type
         const originalUrl = urlType === 'source' ? redirect.routePrefix : redirect.destination;
         // Apply regex directly to the full URL string
         const newUrl = originalUrl.replace(regex, replacement);
-        console.log('Original:', originalUrl, 'New:', newUrl);
         return newUrl;
       });
 
       previewUrls.value = previews.join('\n');
     } catch (error) {
-      console.error('Preview error:', error);
       previewUrls.value = 'Invalid regex pattern: ' + (error instanceof Error ? error.message : 'Unknown error');
     }
   }
@@ -689,7 +728,6 @@ interface Filters {
 
   // Pattern input changes
   patternInput?.addEventListener('input', () => {
-    console.log('Pattern changed:', patternInput.value);
     updatePreview();
   });
 
@@ -699,7 +737,6 @@ interface Filters {
       const pattern = btn.getAttribute('data-pattern');
       if (pattern) {
         patternInput.value = pattern;
-        console.log('Pattern button clicked:', pattern);
         updatePreview();
       }
     });
@@ -721,6 +758,10 @@ interface Filters {
 
   // Apply changes
   applyChangesBtn?.addEventListener('click', async () => {
+    const spinner = document.getElementById('applySpinner');
+    const buttonText = document.getElementById('applyButtonText');
+    const button = document.getElementById('applyChangesBtn') as HTMLButtonElement;
+
     try {
       const selectedRedirects = getSelectedRedirects();
       const patternValue = patternInput.value;
@@ -736,7 +777,6 @@ interface Filters {
       const regex = new RegExp(pattern);
       const updates = selectedRedirects.map(redirect => {
         const originalUrl = urlType === 'source' ? redirect.routePrefix : redirect.destination;
-        // Apply regex directly to the full URL string
         const newUrl = originalUrl.replace(regex, replacement);
 
         return {
@@ -748,14 +788,92 @@ interface Filters {
         };
       });
 
-      // Call API to update redirects
-      const response = await fetch('/api/redirects/bulk-update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ redirects: updates })
-      });
+      // Show loading state with initial count
+      if (spinner) spinner.classList.remove('hidden');
+      if (button) button.disabled = true;
 
-      if (!response.ok) throw new Error('Failed to update redirects');
+      // Process in smaller batches with rate limit handling
+      const batchSize = 50; // Reduced batch size
+      const totalBatches = Math.ceil(updates.length / batchSize);
+      let processedCount = 0;
+      let failedUpdates: any[] = [];
+      let retryDelay = 1000; // Start with 1 second delay
+
+      for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+        const start = batchIndex * batchSize;
+        const end = Math.min(start + batchSize, updates.length);
+        const batch = updates.slice(start, end);
+
+        // Update progress
+        if (buttonText) {
+          buttonText.textContent = `Updating ${processedCount + 1}-${end} of ${updates.length}...`;
+        }
+
+        let retryCount = 0;
+        const maxRetries = 3;
+        let success = false;
+
+        while (!success && retryCount < maxRetries) {
+          try {
+            // Call API to update redirects
+            const response = await fetch('/api/redirects/bulk-update', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ redirects: batch })
+            });
+
+            if (!response.ok) {
+              const errorData = await response.json();
+
+              // Handle rate limit specifically
+              if (errorData.errorType === 'RATE_LIMIT') {
+                retryCount++;
+                if (retryCount < maxRetries) {
+                  // Exponential backoff
+                  await new Promise(resolve => setTimeout(resolve, retryDelay));
+                  retryDelay *= 2; // Double the delay for next retry
+                  continue;
+                }
+              }
+
+              throw new Error(errorData.message || 'Failed to update redirects');
+            }
+
+            const result = await response.json();
+            if (result.failures) {
+              failedUpdates = [...failedUpdates, ...result.failures];
+            }
+
+            success = true;
+            retryDelay = 1000; // Reset delay after successful request
+          } catch (error) {
+            console.error('Error updating batch:', error);
+            retryCount++;
+
+            if (retryCount === maxRetries) {
+              failedUpdates.push(`Batch ${batchIndex + 1} failed after ${maxRetries} retries: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            } else {
+              await new Promise(resolve => setTimeout(resolve, retryDelay));
+              retryDelay *= 2; // Double the delay for next retry
+            }
+          }
+        }
+
+        processedCount = end;
+
+        // Add delay between batches to respect rate limit (110 requests per 10 seconds)
+        // Using 100ms * batchSize to ensure we stay well under the limit
+        if (batchIndex < totalBatches - 1) {
+          await new Promise(resolve => setTimeout(resolve, 100 * batchSize));
+        }
+      }
+
+      // Show results
+      if (failedUpdates.length > 0) {
+        alert(`Updates completed with ${failedUpdates.length} errors:\n\n${failedUpdates.join('\n')}`);
+      } else {
+        alert('All updates completed successfully!');
+      }
 
       // Reload redirects and close modal
       await loadRedirects();
@@ -763,6 +881,11 @@ interface Filters {
     } catch (error) {
       console.error('Error updating redirects:', error);
       alert('Failed to update redirects: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      // Reset button state
+      if (spinner) spinner.classList.add('hidden');
+      if (buttonText) buttonText.textContent = 'Apply Changes';
+      if (button) button.disabled = false;
     }
   });
 
