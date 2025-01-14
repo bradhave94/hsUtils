@@ -185,7 +185,7 @@ interface Filters {
       </div>
 
       <div class="flex space-x-2">
-        <button class="pattern-btn bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-md text-sm font-medium" data-pattern="#test#check">Replace Text</button>
+        <button class="pattern-btn bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-md text-sm font-medium" data-pattern="#find#replace">Replace Text</button>
         <button class="pattern-btn bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-md text-sm font-medium" data-pattern="#^(.*)$#/new$1">Add Prefix</button>
       </div>
 
@@ -200,7 +200,7 @@ interface Filters {
         <div class="mt-1 text-sm text-gray-400">
           Examples:
           <ul class="list-disc list-inside ml-2 space-y-1">
-            <li>#test#check → replaces "test" with "check" anywhere in the URL</li>
+            <li>#find#replace → replaces "find" with "replace" anywhere in the URL</li>
             <li>#^(.*)$#/new$1 → adds /new to start</li>
             <li>Use $1 to reference captured content in parentheses (.*)</li>
           </ul>
@@ -640,22 +640,8 @@ interface Filters {
       const previews = selectedRedirects.map(redirect => {
         // Choose which URL to edit based on the selected type
         const originalUrl = urlType === 'source' ? redirect.routePrefix : redirect.destination;
-        let newUrl = originalUrl;
-
-        if (newUrl.startsWith('http')) {
-          try {
-            const urlObj = new URL(newUrl);
-            const newPath = urlObj.pathname.replace(regex, replacement);
-            urlObj.pathname = newPath;
-            newUrl = urlObj.toString();
-          } catch (e) {
-            console.error('URL parsing error:', e);
-            return originalUrl;
-          }
-        } else {
-          newUrl = newUrl.replace(regex, replacement);
-        }
-
+        // Apply regex directly to the full URL string
+        const newUrl = originalUrl.replace(regex, replacement);
         console.log('Original:', originalUrl, 'New:', newUrl);
         return newUrl;
       });
@@ -750,21 +736,8 @@ interface Filters {
       const regex = new RegExp(pattern);
       const updates = selectedRedirects.map(redirect => {
         const originalUrl = urlType === 'source' ? redirect.routePrefix : redirect.destination;
-        let newUrl = originalUrl;
-
-        if (newUrl.startsWith('http')) {
-          try {
-            const urlObj = new URL(newUrl);
-            const newPath = urlObj.pathname.replace(regex, replacement);
-            urlObj.pathname = newPath;
-            newUrl = urlObj.toString();
-          } catch (e) {
-            console.error('URL parsing error:', e);
-            return redirect;
-          }
-        } else {
-          newUrl = newUrl.replace(regex, replacement);
-        }
+        // Apply regex directly to the full URL string
+        const newUrl = originalUrl.replace(regex, replacement);
 
         return {
           id: redirect.id,
