@@ -21,4 +21,10 @@ export const API_ENDPOINTS = {
     list: 'https://api.hubapi.com/content/api/v4/custom_widgets',
     get: (id: string) => `https://api.hubapi.com/content/api/v4/custom_widgets/${id}`,
   },
+  themes: {
+    upload: (environment: string, path: string) => `https://api.hubapi.com/cms/v3/source-code/${environment}/content/${path}`,
+    extract: 'https://api.hubapi.com/cms/v3/source-code/extract/async',
+    extractStatus: (taskId: string) => `https://api.hubapi.com/cms/v3/source-code/extract/async/tasks/${taskId}/status`,
+    delete: (environment: string, path: string) => `https://api.hubapi.com/cms/v3/source-code/${environment}/content/${path}`,
+  },
 } as const;

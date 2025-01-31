@@ -116,4 +116,49 @@ export class ApiClient {
 
     return response.json();
   }
+
+  async delete<T>(url: string, refreshToken?: string): Promise<T> {
+    return this.fetch<T>(url, {
+      method: 'DELETE',
+    }, refreshToken);
+  }
+
+  async uploadFile(url: string, file: File | Blob, refreshToken?: string): Promise<Response> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${this.accessToken}`,
+        },
+        body: formData
+      });
+
+      if (response.status === 401 && refreshToken) {
+        await this.handleTokenRefresh(refreshToken);
+        
+        // Retry the request with new token
+        return fetch(url, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${this.accessToken}`,
+          },
+          body: formData
+        });
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return response;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Failed to upload file');
+    }
+  }
 }
