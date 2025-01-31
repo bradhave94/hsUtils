@@ -14,7 +14,7 @@ export const config = {
     clientId: env.HUBSPOT_CLIENT_ID,
     clientSecret: env.HUBSPOT_CLIENT_SECRET,
     redirectUri: env.REDIRECT_URI,
-    scopes: 'content',
+    scopes: 'content crm.objects.contacts.read',
     urls: {
       auth: 'https://app.hubspot.com/oauth/authorize',
       token: 'https://api.hubapi.com/oauth/v1/token',

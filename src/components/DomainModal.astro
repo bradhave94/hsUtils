@@ -35,7 +35,7 @@ const domains: Domain[] = accessToken ? await getDomains(accessToken) : [];
         </div>
         <div class="flex justify-end space-x-3 mt-4">
             <button class="close-modal-btn bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded">Cancel</button>
-            <button id="confirmDomainChange" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded transition duration-300 text-sm sm:text-base" disabled aria-label="Confirm domain change">Confirm</button>
+            <button id="confirmDomainChange" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded" disabled aria-label="Confirm domain change">Confirm</button>
         </div>
     </div>
 </dialog>
@@ -60,6 +60,12 @@ const domains: Domain[] = accessToken ? await getDomains(accessToken) : [];
         const domainOptions = modal.querySelectorAll('.domain-option');
         domainOptions.forEach(option => {
             option.addEventListener('click', () => {
+                // Remove previous selection
+                document.querySelector('.selected-domain')?.classList.remove('selected-domain', 'bg-slate-900', 'bg-opacity-50');
+
+                // Add new selection
+                option.classList.add('selected-domain', 'bg-slate-900', 'bg-opacity-50');
+
                 const domain = option.getAttribute('data-domain');
                 if (domain) {
                     selectedDomain = domain;

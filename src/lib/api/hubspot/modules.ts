@@ -2,14 +2,14 @@ import type { HubSpotModule } from './types';
 import { ApiClient } from './client';
 import { API_ENDPOINTS } from './constants';
 
-const PAGE_LIMIT = 100;
+const PAGE_LIMIT = 9999;
 
 export async function getModules(accessToken: string, refreshToken?: string): Promise<HubSpotModule[]> {
     const client = new ApiClient(accessToken);
 
     try {
         const response = await client.get<{ objects: HubSpotModule[] }>(
-            `${API_ENDPOINTS.modules.list}?limit=${PAGE_LIMIT}`, 
+            `${API_ENDPOINTS.modules.list}?limit=${PAGE_LIMIT}`,
             refreshToken
         );
 
@@ -49,4 +49,4 @@ function mapHubSpotModule(module: HubSpotModule): HubSpotModule {
         source: module.source || '',
         css: module.css || '',
     };
-} 
+}

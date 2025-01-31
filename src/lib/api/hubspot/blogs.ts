@@ -45,7 +45,6 @@ export async function getBlogPosts(accessToken: string, archived = false, refres
 export async function getBlogInfo(accessToken: string, refreshToken?: string): Promise<Array<{ url: string; template_path: string }>> {
   const client = new ApiClient(accessToken);
   const response: HubSpotBlogInfo = await client.get(API_ENDPOINTS.blogs.info, refreshToken);
-  console.log(response);
   return response.objects.map(blog => ({
     url: blog.absolute_url,
     template_path: blog.item_template_path
@@ -69,6 +68,13 @@ export async function getBlogTags(accessToken: string, refreshToken?: string): P
     console.error('Error fetching blog tags:', error);
     throw error;
   }
+}
+
+export async function restoreBlogPost(accessToken: string, postId: string, refreshToken?: string) {
+  const client = new ApiClient(accessToken);
+  return client.patch(`${API_ENDPOINTS.blogs.update(postId)}?archived=true`, {
+    archived: false,
+  }, refreshToken);
 }
 
 export async function updateBlogPost(accessToken: string, postId: string, updates: Partial<HubSpotBlogPost>, refreshToken?: string) {

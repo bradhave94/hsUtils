@@ -13,7 +13,7 @@ function buildModuleTree(modules: HubSpotModule[]) {
     for (const module of modules) {
         const folderPath = module.folderPath || 'No Folder';
         const [rootFolder, ...subFolders] = folderPath.split('/');
-        
+
         if (!tree[rootFolder]) {
             tree[rootFolder] = {};
         }
@@ -61,19 +61,15 @@ const portalId = Astro.cookies.get('hubspot_portal_id')?.value;
                                                         <h3 class="text-2xl font-semibold text-blue-400">
                                                             {module.name}
                                                         </h3>
-                                                        <div class="mt-2 text-sm flex flex-col space-y-1 text-gray-300">
-                                                            <p>ID: {module.id}</p>
-                                                            <p>Global: {JSON.stringify(module.global)}</p>
-                                                        </div>
                                                     </div>
                                                     <div class="flex flex-col space-y-2 min-w-[150px] ml-12 text-right">
-                                                        <a 
+                                                        <a
                                                             href={`/modules/${module.id}`}
                                                             class="text-sm text-blue-400 hover:text-blue-300"
                                                         >
                                                             Edit JSON
                                                         </a>
-                                                        <a 
+                                                        <a
                                                             href={`https://app.hubspot.com/design-manager/${portalId}/modules/${module.id}`}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
@@ -116,4 +112,4 @@ const portalId = Astro.cookies.get('hubspot_portal_id')?.value;
 
 <style>
     /* Reuse the same styles as PageTree.astro */
-</style> 
+</style>

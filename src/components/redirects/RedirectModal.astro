@@ -1,0 +1,327 @@
+---
+---
+
+<dialog id="redirectModal" class="modal bg-gray-900 text-white rounded-lg shadow-xl w-full max-w-2xl border-none p-0 hidden">
+    <div class="p-6 w-full ">
+        <div class="flex justify-between items-center mb-4">
+            <h2 id="modalTitle" class="text-2xl font-bold text-orange-500">Create Redirect</h2>
+            <button id="closeModal" class="text-gray-400 hover:text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+
+        <form id="redirectForm" class="space-y-4">
+            <input type="hidden" id="redirectId" name="id" />
+
+            <div>
+                <label for="routePrefix" class="block text-sm font-medium text-gray-300">
+                    Source URL
+                </label>
+                <input
+                    type="text"
+                    id="routePrefix"
+                    name="routePrefix"
+                    required
+                    class="mt-1 block w-full p-2 rounded-md bg-gray-800 border-gray-700 text-white shadow-sm focus:border-orange-500 focus:ring-orange-500"
+                />
+                <p class="mt-1 text-sm text-gray-400">
+                    The URL path that users will visit (e.g., /old-page)
+                </p>
+            </div>
+
+            <div>
+                <label for="destination" class="block text-sm font-medium text-gray-300">
+                    Destination URL
+                </label>
+                <input
+                    type="text"
+                    id="destination"
+                    name="destination"
+                    required
+                    class="mt-1 block w-full p-2 rounded-md bg-gray-800 border-gray-700 text-white shadow-sm focus:border-orange-500 focus:ring-orange-500"
+                />
+                <p class="mt-1 text-sm text-gray-400">
+                    The URL where users will be redirected to (e.g., /new-page)
+                </p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label for="redirectStyle" class="block text-sm font-medium text-gray-300">
+                        Redirect Type
+                    </label>
+                    <select
+                        id="redirectStyle"
+                        name="redirectStyle"
+                        required
+                        class="mt-1 block w-full p-2 rounded-md bg-gray-800 border-gray-700 text-white shadow-sm focus:border-orange-500 focus:ring-orange-500"
+                    >
+                        <option value="301">301 (Permanent)</option>
+                        <option value="302">302 (Temporary)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="precedence" class="block text-sm font-medium text-gray-300">
+                        Precedence
+                    </label>
+                    <input
+                        type="number"
+                        id="precedence"
+                        name="precedence"
+                        value="1"
+                        min="1"
+                        required
+                        class="mt-1 block w-full p-2 rounded-md bg-gray-800 border-gray-700 text-white shadow-sm focus:border-orange-500 focus:ring-orange-500"
+                    />
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-2">
+                    <div class="flex items-center">
+                        <input
+                            type="checkbox"
+                            id="isPattern"
+                            name="isPattern"
+                            class="h-4 w-4 rounded border-gray-700 bg-gray-800 text-orange-500 focus:ring-orange-500"
+                        />
+                        <label for="isPattern" class="ml-2 block text-sm text-gray-300">
+                            Use Pattern Matching
+                        </label>
+                    </div>
+
+                    <div class="flex items-center">
+                        <input
+                            type="checkbox"
+                            id="isOnlyAfterNotFound"
+                            name="isOnlyAfterNotFound"
+                            class="h-4 w-4 rounded border-gray-700 bg-gray-800 text-orange-500 focus:ring-orange-500"
+                        />
+                        <label for="isOnlyAfterNotFound" class="ml-2 block text-sm text-gray-300">
+                            Only After Not Found
+                        </label>
+                    </div>
+
+                    <div class="flex items-center">
+                        <input
+                            type="checkbox"
+                            id="isMatchFullUrl"
+                            name="isMatchFullUrl"
+                            class="h-4 w-4 rounded border-gray-700 bg-gray-800 text-orange-500 focus:ring-orange-500"
+                        />
+                        <label for="isMatchFullUrl" class="ml-2 block text-sm text-gray-300">
+                            Match Full URL
+                        </label>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <div class="flex items-center">
+                        <input
+                            type="checkbox"
+                            id="isMatchQueryString"
+                            name="isMatchQueryString"
+                            class="h-4 w-4 rounded border-gray-700 bg-gray-800 text-orange-500 focus:ring-orange-500"
+                        />
+                        <label for="isMatchQueryString" class="ml-2 block text-sm text-gray-300">
+                            Match Query String
+                        </label>
+                    </div>
+
+                    <div class="flex items-center">
+                        <input
+                            type="checkbox"
+                            id="isTrailingSlashOptional"
+                            name="isTrailingSlashOptional"
+                            class="h-4 w-4 rounded border-gray-700 bg-gray-800 text-orange-500 focus:ring-orange-500"
+                        />
+                        <label for="isTrailingSlashOptional" class="ml-2 block text-sm text-gray-300">
+                            Trailing Slash Optional
+                        </label>
+                    </div>
+
+                    <div class="flex items-center">
+                        <input
+                            type="checkbox"
+                            id="isProtocolAgnostic"
+                            name="isProtocolAgnostic"
+                            class="h-4 w-4 rounded border-gray-700 bg-gray-800 text-orange-500 focus:ring-orange-500"
+                        />
+                        <label for="isProtocolAgnostic" class="ml-2 block text-sm text-gray-300">
+                            Protocol Agnostic
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-4 pt-4">
+                <button
+                    type="button"
+                    id="cancelButton"
+                    class="px-4 py-2 text-sm font-medium text-gray-300 bg-gray-700 border border-gray-600 rounded-md shadow-sm hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+                >
+                    Cancel
+                </button>
+                <button
+                    type="submit"
+                    class="px-4 py-2 text-sm font-medium text-white bg-orange-600 border border-transparent rounded-md shadow-sm hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+                >
+                    Save
+                </button>
+            </div>
+        </form>
+    </div>
+</dialog>
+
+<script>
+    const modal = document.getElementById('redirectModal') as HTMLDialogElement;
+    const form = document.getElementById('redirectForm') as HTMLFormElement;
+    const modalTitle = document.getElementById('modalTitle');
+    const closeButton = document.getElementById('closeModal');
+    const cancelButton = document.getElementById('cancelButton');
+
+    let currentMode: 'create' | 'edit' = 'create';
+
+    function showModal() {
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.showModal();
+        }
+    }
+
+    function hideModal() {
+        if (modal) {
+            modal.close();
+            modal.classList.add('hidden');
+            form?.reset();
+        }
+    }
+
+    function setFormData(redirect: any) {
+        const idInput = document.getElementById('redirectId') as HTMLInputElement;
+        const routePrefixInput = document.getElementById('routePrefix') as HTMLInputElement;
+        const destinationInput = document.getElementById('destination') as HTMLInputElement;
+        const redirectStyleSelect = document.getElementById('redirectStyle') as HTMLSelectElement;
+        const precedenceInput = document.getElementById('precedence') as HTMLInputElement;
+        const isPatternInput = document.getElementById('isPattern') as HTMLInputElement;
+        const isOnlyAfterNotFoundInput = document.getElementById('isOnlyAfterNotFound') as HTMLInputElement;
+        const isMatchFullUrlInput = document.getElementById('isMatchFullUrl') as HTMLInputElement;
+        const isMatchQueryStringInput = document.getElementById('isMatchQueryString') as HTMLInputElement;
+        const isTrailingSlashOptionalInput = document.getElementById('isTrailingSlashOptional') as HTMLInputElement;
+        const isProtocolAgnosticInput = document.getElementById('isProtocolAgnostic') as HTMLInputElement;
+
+        if (redirect) {
+            idInput.value = redirect.id;
+            routePrefixInput.value = redirect.routePrefix;
+            destinationInput.value = redirect.destination;
+            redirectStyleSelect.value = redirect.redirectStyle.toString();
+            precedenceInput.value = redirect.precedence.toString();
+            isPatternInput.checked = redirect.isPattern;
+            isOnlyAfterNotFoundInput.checked = redirect.isOnlyAfterNotFound;
+            isMatchFullUrlInput.checked = redirect.isMatchFullUrl;
+            isMatchQueryStringInput.checked = redirect.isMatchQueryString;
+            isTrailingSlashOptionalInput.checked = redirect.isTrailingSlashOptional;
+            isProtocolAgnosticInput.checked = redirect.isProtocolAgnostic;
+        }
+    }
+
+    document.addEventListener('openRedirectModal', ((e: CustomEvent) => {
+        const { mode, redirect } = e.detail;
+        currentMode = mode;
+
+        if (modalTitle) {
+            modalTitle.textContent = mode === 'create' ? 'Create Redirect' : 'Edit Redirect';
+        }
+
+        if (mode === 'edit' && redirect) {
+            setFormData(redirect);
+        }
+
+        showModal();
+    }) as EventListener);
+
+    closeButton?.addEventListener('click', hideModal);
+    cancelButton?.addEventListener('click', hideModal);
+
+    // Handle click outside
+    modal?.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            hideModal();
+        }
+    });
+
+    form?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const formData = new FormData(form);
+        const data = {
+            id: formData.get('id'),
+            routePrefix: formData.get('routePrefix'),
+            destination: formData.get('destination'),
+            redirectStyle: parseInt(formData.get('redirectStyle') as string),
+            precedence: parseInt(formData.get('precedence') as string),
+            isPattern: formData.get('isPattern') === 'on',
+            isOnlyAfterNotFound: formData.get('isOnlyAfterNotFound') === 'on',
+            isMatchFullUrl: formData.get('isMatchFullUrl') === 'on',
+            isMatchQueryString: formData.get('isMatchQueryString') === 'on',
+            isTrailingSlashOptional: formData.get('isTrailingSlashOptional') === 'on',
+            isProtocolAgnostic: formData.get('isProtocolAgnostic') === 'on'
+        };
+
+        try {
+            const response = await fetch(`/api/redirects/${currentMode}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (!response.ok) throw new Error(`Failed to ${currentMode} redirect`);
+
+            // Trigger reload of redirects
+            const event = new CustomEvent('reloadRedirects');
+            document.dispatchEvent(event);
+
+            hideModal();
+        } catch (error) {
+            console.error(`Error ${currentMode}ing redirect:`, error);
+        }
+    });
+</script>
+
+<style>
+    dialog::backdrop {
+        background: rgba(0, 0, 0, 0.5);
+    }
+
+    dialog {
+        border: none;
+        padding: 0;
+        border-radius: 0.5rem;
+        max-height: 90vh;
+        overflow-y: auto;
+        margin: auto;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+
+    dialog[open] {
+        display: flex;
+    }
+
+    dialog.hidden {
+        display: none;
+    }
+
+    @media (max-width: 640px) {
+        dialog {
+            max-height: 95vh;
+            width: calc(100% - 2rem);
+            margin: 1rem;
+        }
+    }
+</style>

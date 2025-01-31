@@ -32,7 +32,6 @@ const { title = 'Change URL Slugs' } = Astro.props;
         <div>
             <label class="block text-sm font-medium mb-1">Current URLs</label>
             <textarea id="currentUrls" class="w-full h-32 p-2 bg-gray-700 rounded" readonly></textarea>
-            <button class="copy-urls-btn mt-1 text-sm text-blue-400 hover:text-blue-300">Copy URLs</button>
         </div>
         <div>
             <label class="block text-sm font-medium mb-1">Preview</label>
@@ -40,7 +39,7 @@ const { title = 'Change URL Slugs' } = Astro.props;
         </div>
         <div class="flex justify-end space-x-3 mt-4">
             <button class="close-modal-btn bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded">Cancel</button>
-            <button id="applyChangesBtn" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded">Apply Changes</button>
+            <button id="applyChangesBtn" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded">Confirm</button>
         </div>
     </div>
 </dialog>
@@ -48,16 +47,35 @@ const { title = 'Change URL Slugs' } = Astro.props;
 <script>
     let resolvePromise: ((value: string | null) => void) | null = null;
     let selectedPages: Array<{ pageId: string; currentUrl: string }> = [];
+    let blogInfo: Array<{ url: string }> = [];
 
     function initializeSlugModal() {
         const modal = document.getElementById('slugModal') as HTMLDialogElement;
         if (!modal) return;
 
-        window.openSlugModal = async (pages: Array<{ pageId: string; currentUrl: string }>): Promise<string | null> => {
+        window.openSlugModal = async (
+            pages: Array<{ pageId: string; currentUrl: string }>,
+            blogs?: Array<{ url: string }>
+        ): Promise<string | null> => {
             selectedPages = pages;
+            blogInfo = blogs || [];
             const currentUrls = document.getElementById('currentUrls') as HTMLTextAreaElement;
-            currentUrls.value = pages.map(p => new URL(p.currentUrl).pathname).join('\n');
-            
+
+            // Show URLs differently based on whether it's blog posts or pages
+            currentUrls.value = pages.map(p => {
+                const pathname = new URL(p.currentUrl).pathname;
+
+                // Only process blog URLs if blogs are provided
+                if (blogs) {
+                    const matchingBlog = blogs.find(blog => pathname.startsWith(new URL(blog.url).pathname));
+                    if (matchingBlog) {
+                        const blogPath = new URL(matchingBlog.url).pathname;
+                        return pathname.replace(blogPath, '');
+                    }
+                }
+                return pathname;
+            }).join('\n');
+
             modal.showModal();
             return new Promise<string | null>((resolve) => {
                 resolvePromise = resolve;
@@ -79,7 +97,6 @@ const { title = 'Change URL Slugs' } = Astro.props;
         const patternButtons = modal.querySelectorAll('.pattern-btn');
         const patternInput = document.getElementById('patternInput') as HTMLInputElement;
         const previewUrls = document.getElementById('previewUrls') as HTMLTextAreaElement;
-        const copyUrlsBtn = modal.querySelector('.copy-urls-btn');
 
         function updatePreview() {
             try {
@@ -94,15 +111,34 @@ const { title = 'Change URL Slugs' } = Astro.props;
                 const regex = new RegExp(pattern);
                 const previews = selectedPages.map(page => {
                     const currentPath = new URL(page.currentUrl).pathname;
-                    let newSlug = currentPath.replace(regex, replacement);
 
-                    // Clean up the slug
-                    newSlug = newSlug
+                    // Only process blog URLs if we have blog info
+                    let basePath = currentPath;
+                    let blogPath = '';
+
+                    if (blogInfo.length > 0) {
+                        const matchingBlog = blogInfo.find(blog => {
+                            const blogUrl = new URL(blog.url);
+                            return currentPath.startsWith(blogUrl.pathname);
+                        });
+
+                        if (matchingBlog) {
+                            const blogUrl = new URL(matchingBlog.url);
+                            blogPath = blogUrl.pathname;
+                            // Remove the blog path from the current path
+                            basePath = currentPath.replace(blogPath, '');
+                        }
+                    }
+
+                    // Apply the pattern to the path without the blog prefix
+                    let newSlug = basePath.replace(regex, replacement)
                         .replace(/\/+/g, '/') // Remove multiple slashes
                         .replace(/\/$/, '')   // Remove trailing slash
                         .replace(/^(?!\/)/, '/'); // Ensure starts with slash
 
-                    return `${currentPath} → ${newSlug}`;
+
+
+                    return newSlug;
                 });
 
                 previewUrls.value = previews.join('\n');
@@ -131,19 +167,6 @@ const { title = 'Change URL Slugs' } = Astro.props;
                     resolvePromise = null;
                 }
             });
-        });
-
-        copyUrlsBtn?.addEventListener('click', () => {
-            const currentUrls = document.getElementById('currentUrls') as HTMLTextAreaElement;
-            currentUrls.select();
-            document.execCommand('copy');
-
-            const button = copyUrlsBtn as HTMLButtonElement;
-            const originalText = button.textContent || '';
-            button.textContent = 'Copied!';
-            setTimeout(() => {
-                button.textContent = originalText;
-            }, 2000);
         });
 
         // Close on click outside

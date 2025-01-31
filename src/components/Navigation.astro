@@ -6,15 +6,15 @@ const authUrl = getAuthUrl();
 const auth = await checkAuth(Astro.cookies);
 const { pathname } = Astro.url;
 
-// Get the cache disabled preference from cookie
-const cacheDisabled = Astro.cookies.get('cache-disabled')?.boolean() || false;
+// Get the cache enabled preference from cookie
+const cacheEnabled = Astro.cookies.get('cache-enabled')?.boolean() ?? false;
 ---
 
 <nav class="bg-gray-800 text-white p-4">
   <div class="container mx-auto flex justify-between items-center">
     <div class="flex items-center space-x-4">
       <a href="/" class="text-xl font-bold text-orange-500">HubSpot Utils</a>
-      
+
       {auth.portalId && <span class="text-sm text-gray-400">
         <a href={authUrl} class="hover:text-orange-500 transition-colors">Portal ID: {auth.portalId}</a>
       </span>}
@@ -23,21 +23,22 @@ const cacheDisabled = Astro.cookies.get('cache-disabled')?.boolean() || false;
       <a href="/pages" class="hover:text-orange-500 transition-colors">Pages</a>
       <a href="/blog-posts" class="hover:text-orange-500 transition-colors">Blog Posts</a>
       <a href="/modules" class="hover:text-orange-500 transition-colors">Modules</a>
-      
+      <a href="/redirects" class="hover:text-orange-500 transition-colors">Redirects</a>
+
       <div class="flex items-center space-x-2">
         <label class="relative inline-flex items-center cursor-pointer">
-          <input 
-            type="checkbox" 
+          <input
+            type="checkbox"
             id="cacheToggle"
             class="sr-only peer"
-            checked={cacheDisabled}
+            checked={cacheEnabled}
           >
           <div class="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-orange-500"></div>
-          <span class="ml-2 text-sm text-gray-300">Disable Cache</span>
+          <span class="ml-2 text-sm text-gray-300">Enable Caching</span>
         </label>
       </div>
 
-      {!cacheDisabled && (
+      {cacheEnabled && (
         <button
           id="clearAllCache"
           class="text-gray-400 hover:text-orange-500 transition-colors h-6 flex items-center"
@@ -57,16 +58,16 @@ const cacheDisabled = Astro.cookies.get('cache-disabled')?.boolean() || false;
     document.getElementById('clearAllCache')?.addEventListener('click', async () => {
         try {
             const accessToken = document.querySelector('meta[name="access-token"]')?.getAttribute('content');
-            
+
             await fetch('/api/invalidate-cache', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
+                body: JSON.stringify({
                     accessToken,
                     type: null // This will trigger invalidateAll
                 })
             });
-            
+
             location.reload();
         } catch (error) {
             console.error('Failed to clear cache:', error);
@@ -76,11 +77,11 @@ const cacheDisabled = Astro.cookies.get('cache-disabled')?.boolean() || false;
 
     // Cache toggle handler
     document.getElementById('cacheToggle')?.addEventListener('change', async (e) => {
-        const isDisabled = (e.target as HTMLInputElement).checked;
-        
+        const isEnabled = (e.target as HTMLInputElement).checked;
+
         // Set cookie with 30 day expiration
-        document.cookie = `cache-disabled=${isDisabled}; path=/; max-age=${60 * 60 * 24 * 30}`;
-        
+        document.cookie = `cache-enabled=${isEnabled}; path=/; max-age=${60 * 60 * 24 * 30}`;
+
         // Reload the page to apply the new cache setting
         location.reload();
     });
